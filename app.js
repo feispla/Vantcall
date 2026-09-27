@@ -28,7 +28,8 @@
 
   const crest = (team, size) => {
     if (!team) return `<span class="team-crest" style="background:#3a3f4a">—</span>`;
-    return `<span class="team-crest" ${size ? `style="width:${size}px;height:${size}px"` : ''}>${esc(team.tag)}</span>`;
+    const color = team.crest || '#3a3f4a';
+    return `<span class="team-crest" style="background:${color}${size ? `;width:${size}px;height:${size}px` : ''}">${esc(team.tag)}</span>`;
   };
 
   const trend = (change) => {

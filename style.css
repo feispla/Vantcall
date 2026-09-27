@@ -87,7 +87,7 @@
   --color-border: oklch(from #14161b h c l / 0.14);
   --color-text: #14161b;
   --color-text-muted: #5a6069;
-  --color-text-faint: #9aa0a9;
+  --color-text-faint: #7d838d;
 
   --color-accent: #5a7400;
   --color-accent-ink: #fbfcfa;
@@ -306,6 +306,10 @@ main {
   color: var(--color-accent-ink);
   background: var(--color-accent);
   border-color: transparent;
+}
+
+.mobile-nav {
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
 }
 
 @media (min-width: 900px) {
@@ -565,8 +569,9 @@ main {
 
 .hero__art {
   position: relative;
-  aspect-ratio: 16 / 9;
-  min-height: 320px;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  min-height: 340px;
   background:
     radial-gradient(120% 140% at 80% 10%, oklch(from var(--color-accent) l c h / 0.14), transparent 55%),
     radial-gradient(90% 120% at 15% 90%, oklch(0.45 0.12 260 / 0.35), transparent 60%),
@@ -607,6 +612,7 @@ main {
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
+  width: 100%;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
@@ -614,7 +620,9 @@ main {
 .hero__teams {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3) var(--space-4);
+  flex-wrap: wrap;
+  width: 100%;
   font-family: var(--font-display);
   font-size: var(--text-lg);
   font-weight: 600;
@@ -633,7 +641,14 @@ main {
   flex-wrap: wrap;
 }
 
+.hero__body {
+  align-items: flex-start;
+}
+
 @media (min-width: 768px) {
+  .hero__art {
+    aspect-ratio: 21 / 9;
+  }
   .hero__body {
     padding: var(--space-10);
   }
@@ -762,6 +777,27 @@ main {
 
 .match-card__stage {
   color: var(--color-text-muted);
+}
+
+/* Compactar tarjetas de partido en pantallas pequeñas */
+@media (max-width: 520px) {
+  .match-card__row {
+    gap: var(--space-2);
+  }
+  .match-card__team {
+    gap: var(--space-2);
+  }
+  .team-crest {
+    width: 28px;
+    height: 28px;
+    font-size: 0.7rem;
+  }
+  .match-card__name {
+    font-size: var(--text-xs);
+  }
+  .match-card__score {
+    font-size: var(--text-base);
+  }
 }
 
 /* Alineación en desktop */
@@ -970,9 +1006,15 @@ main {
 
 .table-wrap {
   overflow-x: auto;
+  scrollbar-width: thin;
+  background:
+    linear-gradient(to right, var(--color-surface), var(--color-surface)) left / calc(100% - 12px) 100% no-repeat,
+    linear-gradient(to right, transparent, var(--color-surface)) right / 12px 100% no-repeat;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  background:
+    linear-gradient(to right, var(--color-surface), var(--color-surface)) left / calc(100% - 12px) 100% no-repeat,
+    linear-gradient(to right, transparent, var(--color-surface)) right / 12px 100% no-repeat;
 }
 
 .data-table {
