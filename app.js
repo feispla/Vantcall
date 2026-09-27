@@ -5,6 +5,140 @@
 (function () {
   'use strict';
 
+  /* ============================================================
+     SUPABASE — Datos reales
+     Configura SUPABASE_URL y SUPABASE_ANON_KEY con los valores de
+     tu proyecto (Project Settings → API). La clave anon es pública
+     por diseño; las políticas RLS del esquema solo permiten lectura.
+     Si no está configurado o falla, la web usa los datos demo.
+     ============================================================ */
+
+  const SUPABASE = {
+    url: '',            // ej. 'https://xxxxxxxx.supabase.co'
+    anonKey: '',        // clave anon (pública)
+  };
+
+  const sb = {
+    enabled: Boolean(SUPABASE.url && SUPABASE.anonKey),
+    url: SUPABASE.url.replace(/\/$/, ''),
+    key: SUPABASE.anonKey,
+    async get(table, params = '') {
+      const res = await fetch(`${this.url}/rest/v1/${table}?select=*${params}`, {
+        headers: {
+          apikey: this.key,
+          Authorization: `Bearer ${this.key}`,
+          Accept: 'application/json',
+        },
+      });
+      if (!res.ok) throw new Error(`Supabase ${table}: HTTP ${res.status}`);
+      return res.json();
+    },
+  };
+
+  // Estado de datos: 'live' (Supabase) | 'demo' (ficticios)
+  let dataMode = 'demo';
+
+  async function loadLiveData() {
+    if (!sb.enabled) return false;
+    try {
+      const [teams, players, tournaments, series, maps, standings, news] = await Promise.all([
+        sb.get('teams'),
+        sb.get('players'),
+        sb.get('tournaments'),
+        sb.get('match_series', '&order=scheduled_at.asc'),
+        sb.get('match_maps', '&order=sequence.asc'),
+        sb.get('standings', '&order=position.asc'),
+        sb.get('news_articles', '&status=eq.published&order=published_at.desc'),
+      ]);
+      // Equipos por slug para los joins
+      const teamBySlug = Object.fromEntries(teams.map((t) => [t.slug, t]));
+      const live = {
+        teams: teams.map((t) => ({
+          id: t.slug, slug: t.slug, name: t.name, tag: t.tag, game: t.game,
+          region: t.region, crest: t.crest || '#3a3f4a', motto: t.motto || '',
+        })),
+        players: players.map((p) => ({
+          slug: p.slug, name: p.name,
+          team: p.team_id ? (teams.find((t) => t.id === p.team_id) || {}).slug : null,
+          game: p.game, role: p.role, rating: p.rating, trend: p.trend,
+          ...(p.stats || {}),
+        })),
+        tournaments: tournaments.map((t) => ({
+          slug: t.slug, name: t.name, game: t.game, region: t.region, format: t.format,
+          status: t.status, prize: t.prize, dates: t.dates, participants: t.participants,
+          hue: t.hue, description: t.description, registration: t.registration_status,
+        })),
+        matches: series.map((m) => {
+          const teamA = teams.find((t) => t.id === m.team_a_id);
+          const teamB = teams.find((t) => t.id === m.team_b_id);
+          const t = tournaments.find((x) => x.id === m.tournament_id);
+          const maps = mapsFor(m.id, maps);
+          return {
+            id: m.public_id, tournament: t ? t.slug : null, game: m.game, stage: m.stage,
+            bestOf: m.best_of, status: m.status,
+            dayOffset: null, scheduledAt: m.scheduled_at,
+            time: m.scheduled_at ? new Date(m.scheduled_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : '',
+            teamA: teamA ? teamA.slug : null, teamB: teamB ? teamB.slug : null,
+            teamAName: m.team_a_label, teamBName: m.team_b_label,
+            scoreA: m.score_a, scoreB: m.score_b,
+            winner: m.winner, mvp: m.mvp, currentMap: m.current_map,
+            maps: maps.length ? maps : null,
+          };
+        }),
+        standings: Object.fromEntries(standings.reduce((acc, s) => {
+          const key = (tournaments.find((t) => t.id === s.tournament_id) || {}).slug;
+          if (!key) return acc;
+          const row = { team: (teams.find((t) => t.id === s.team_id) || {}).slug, played: s.played, wins: s.wins, losses: s.losses, mapsFor: s.maps_for, mapsAgainst: s.maps_against, points: s.points };
+          acc.push([key, [...(acc.find(([k]) => k === key) || [])[1] || [], row]]);
+          return acc.filter(([k], i) => acc.findIndex(([k2]) => k2 === k) === i).map(([k, rows]) => [k, rows.concat(row).filter((r, idx, arr) => arr.findIndex((x) => x.team === r.team) === idx)]);
+        }, [])),
+        news: news.map((n) => ({
+          slug: n.slug, title: n.title, excerpt: n.excerpt,
+          body: Array.isArray(n.body) ? n.body : [], author: n.author,
+          game: n.game, hue: n.hue,
+          date: timeAgo(n.published_at),
+        })),
+      };
+      // Normalizar standings al formato {slug: [rows]}
+      const st = {};
+      standings.forEach((s) => {
+        const key = (tournaments.find((t) => t.id === s.tournament_id) || {}).slug;
+        if (!key) return;
+        (st[key] = st[key] || []).push({ team: (teams.find((t) => t.id === s.team_id) || {}).slug, played: s.played, wins: s.wins, losses: s.losses, mapsFor: s.maps_for, mapsAgainst: s.maps_against, points: s.points });
+      });
+      live.standings = st;
+      if (!live.teams.length && !live.matches.length) return false;
+      Object.assign(window, {
+        TEAMS: live.teams, PLAYERS: live.players, TOURNAMENTS: live.tournaments,
+        MATCHES: live.matches, STANDINGS: st, NEWS: live.news,
+        GAMES: { valorant: { slug: 'valorant', name: 'VALORANT', short: 'VAL', dot: 'dot--valorant' }, cs2: { slug: 'cs2', name: 'Counter-Strike 2', short: 'CS2', dot: 'dot--cs2' }, lol: { slug: 'lol', name: 'League of Legends', short: 'LoL', dot: 'dot--lol' } },
+        REGIONS: { latam: 'LATAM', na: 'Norteamérica', eu: 'Europa', br: 'Brasil', apac: 'Asia-Pacífico' },
+      });
+      dataMode = 'live';
+      return true;
+    } catch (err) {
+      console.warn('[VANTS] Supabase no disponible, usando datos demo:', err.message);
+      return false;
+    }
+  }
+
+  function mapsFor(seriesId, allMaps) {
+    return allMaps.filter((m) => m.series_id === seriesId)
+      .map((m) => ({ name: m.name, scoreA: m.score_a, scoreB: m.score_b, winner: m.winner }));
+  }
+
+  function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.round(diff / 60000);
+    if (mins < 60) return `Hace ${mins} min`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `Hace ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    const days = Math.round(hours / 24);
+    if (days < 30) return `Hace ${days} ${days === 1 ? 'día' : 'días'}`;
+    return new Date(dateStr).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   const app = document.getElementById('app');
 
   /* ---------- Utilidades ---------- */
@@ -50,12 +184,15 @@
     const aWin = m.winner === 'a' || (m.status === 'completed' && m.scoreA > m.scoreB);
     const bWin = m.status === 'completed' && m.scoreB > m.scoreA;
     const showScore = m.status !== 'upcoming';
+    const whenLabel = m.scheduledAt
+      ? new Intl.DateTimeFormat('es', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(m.scheduledAt))
+      : (m.status === 'live' ? m.time : dateLabel(m.dayOffset) + ' · ' + m.time);
     return `
       <a class="card match-card" href="#/match/${m.id}">
         <div class="match-card__top">
           ${gameTag(m.game)}
           <span class="match-card__event">${esc(t.name)}</span>
-          <span class="match-card__time">${m.status === 'live' ? m.time : dateLabel(m.dayOffset) + ' · ' + m.time}</span>
+          <span class="match-card__time">${whenLabel}</span>
         </div>
         <div class="match-card__row">
           <div class="match-card__team">
@@ -196,7 +333,9 @@
   const demoNote = () => `
     <div class="demo-note" role="note">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.5"/></svg>
-      Datos de demostración: equipos, jugadores, torneos y resultados son ficticios.
+      ${dataMode === 'live'
+        ? 'Datos en vivo desde Supabase.'
+        : 'Datos de demostración: equipos, jugadores, torneos y resultados son ficticios.'}
     </div>`;
 
   /* ---------- Torneos ---------- */
@@ -355,7 +494,11 @@
     let list = [...MATCHES];
     if (game !== 'all') list = list.filter((m) => m.game === game);
     if (status !== 'all') list = list.filter((m) => m.status === status);
-    list.sort((a, b) => a.dayOffset - b.dayOffset);
+    list.sort((a, b) => {
+      const aT = a.scheduledAt ? new Date(a.scheduledAt).getTime() : Date.now() + a.dayOffset * 86400000;
+      const bT = b.scheduledAt ? new Date(b.scheduledAt).getTime() : Date.now() + b.dayOffset * 86400000;
+      return aT - bT;
+    });
 
     const chip = (kind, value, label) => {
       const params2 = new URLSearchParams(params);
@@ -364,8 +507,13 @@
     };
 
     const groups = {};
-    list.forEach((m) => { (groups[m.dayOffset] = groups[m.dayOffset] || []).push(m); });
-    const keys = Object.keys(groups).map(Number).sort((a, b) => a - b);
+    list.forEach((m) => {
+      const key = m.scheduledAt
+        ? new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(m.scheduledAt))
+        : dayLabel(m.dayOffset);
+      (groups[key] = groups[key] || []).push(m);
+    });
+    const keys = Object.keys(groups);
 
     return `
       ${demoNote()}
@@ -392,7 +540,7 @@
         ? emptyState('No hay partidos con estos filtros', 'Prueba a cambiar el juego o el estado para ver más partidos del calendario.')
         : keys.map((k) => `
           <div class="date-group">
-            <p class="date-group__title">${dayLabel(k)}</p>
+            <p class="date-group__title">${esc(k)}</p>
             <div class="match-list">${groups[k].map(matchCard).join('')}</div>
           </div>`).join('')}`;
   }
@@ -418,7 +566,7 @@
           ${statusBadge(m.status)} ${gameTag(m.game)}
           <a class="plain" href="#/tournament/${t.slug}">${esc(t.name)}</a>
           <span>${esc(m.stage)}</span><span>BO${m.bestOf}</span>
-          <span class="num">${m.status === 'upcoming' ? dateLabel(m.dayOffset) + ' · ' : ''}${m.time} (hora local)</span>
+          <span class="num">${m.status === 'upcoming' ? whenLabel : m.time} (hora local)</span>
         </div>
         <div class="match-hero__teams">
           <div class="match-hero__team">
@@ -941,7 +1089,6 @@
     const { parts, params } = parseHash();
     let html;
     let navKey = null;
-
     if (parts.length === 0) { html = viewHome(); navKey = 'home'; }
     else if (parts[0] === 'matches') { html = viewMatches(params); navKey = 'matches'; }
     else if (parts[0] === 'match' && parts[1]) { html = viewMatch(parts[1]); navKey = 'matches'; }
@@ -979,7 +1126,9 @@
   }
 
   window.addEventListener('hashchange', render);
-  render();
+
+  // Arranque: intentar datos reales de Supabase antes del primer render
+  loadLiveData().finally(() => render());
 
   /* ---------- Toggle de tema ---------- */
 
