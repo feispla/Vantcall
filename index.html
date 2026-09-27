@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VANTS — Plataforma competitiva de esports</title>
+  <meta name="description" content="VANTS: calendario de partidos, torneos, rankings, estadísticas y noticias de VALORANT, Counter-Strike 2 y League of Legends.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0e12'/%3E%3Cpath d='M8 7l8 18 8-18h-5.4L16 15.8 13.4 7z' fill='%23c8f14f'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./base.css">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <a class="skip-link" href="#main">Saltar al contenido</a>
+
+    <header class="site-header">
+      <div class="container container--wide site-header__inner">
+        <a class="brand" href="#/" aria-label="VANTS — inicio">
+          <svg class="brand__mark" width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <rect x="1" y="1" width="30" height="30" rx="8" stroke="currentColor" stroke-width="2"/>
+            <path d="M8 7l8 18 8-18h-5.4L16 15.8 13.4 7z" fill="currentColor"/>
+          </svg>
+          <span class="brand__name">VANTS</span>
+        </a>
+        <nav class="main-nav" aria-label="Navegación principal">
+          <a href="#/" data-nav="home">Inicio</a>
+          <a href="#/matches" data-nav="matches">Partidos</a>
+          <a href="#/tournaments" data-nav="tournaments">Torneos</a>
+          <a href="#/rankings" data-nav="rankings">Rankings</a>
+          <a href="#/stats" data-nav="stats">Estadísticas</a>
+          <a href="#/news" data-nav="news">Noticias</a>
+          <a href="#/teams" data-nav="teams">Equipos</a>
+        </nav>
+        <div class="header-actions">
+          <button class="icon-btn" data-theme-toggle aria-label="Cambiar a modo claro">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <a class="btn btn--primary btn--small" href="#/login">Iniciar sesión</a>
+        </div>
+      </div>
+      <nav class="mobile-nav" aria-label="Navegación móvil">
+        <a href="#/" data-nav="home">Inicio</a>
+        <a href="#/matches" data-nav="matches">Partidos</a>
+        <a href="#/tournaments" data-nav="tournaments">Torneos</a>
+        <a href="#/rankings" data-nav="rankings">Rankings</a>
+        <a href="#/stats" data-nav="stats">Stats</a>
+        <a href="#/news" data-nav="news">Noticias</a>
+        <a href="#/teams" data-nav="teams">Equipos</a>
+      </nav>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <div class="container container--wide" id="app"></div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container container--wide">
+        <div class="site-footer__grid">
+          <div>
+            <a class="brand" href="#/" style="margin-bottom:var(--space-4)">
+              <svg class="brand__mark" width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <rect x="1" y="1" width="30" height="30" rx="8" stroke="currentColor" stroke-width="2"/>
+                <path d="M8 7l8 18 8-18h-5.4L16 15.8 13.4 7z" fill="currentColor"/>
+              </svg>
+              <span class="brand__name" style="font-size:var(--text-base)">VANTS</span>
+            </a>
+            <p style="font-size:var(--text-sm);color:var(--color-text-muted);max-width:34ch">
+              La plataforma competitiva para VALORANT, Counter-Strike 2 y League of Legends. Perfiles, equipos, torneos, rankings y estadísticas en un solo lugar.
+            </p>
+          </div>
+          <div>
+            <h3>Competir</h3>
+            <ul>
+              <li><a href="#/matches">Calendario de partidos</a></li>
+              <li><a href="#/tournaments">Torneos</a></li>
+              <li><a href="#/rankings">Rankings</a></li>
+              <li><a href="#/stats">Estadísticas</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Comunidad</h3>
+            <ul>
+              <li><a href="#/news">Noticias</a></li>
+              <li><a href="#/teams">Equipos</a></li>
+              <li><a href="#/players">Jugadores</a></li>
+              <li><a href="#/login">Iniciar sesión</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Legal</h3>
+            <ul>
+              <li><a href="#/privacy">Privacidad</a></li>
+              <li><a href="#/terms">Términos</a></li>
+              <li><a href="#/security">Seguridad</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="site-footer__legal">
+          <p>VANTS es una plataforma independiente. No está afiliada, patrocinada ni respaldada por Riot Games, Valve Corporation ni sus editores. VALORANT y League of Legends son marcas de Riot Games, Inc. Counter-Strike es una marca de Valve Corporation.</p>
+          <p>© 2026 VANTS. Datos mostrados: demostración.</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="./data.js"></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>
