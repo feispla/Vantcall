@@ -14,7 +14,7 @@
 
 1. En **Authentication → URL Configuration**:
    - **Site URL**: `https://vantcall-esports.pplx.app`
-   - **Redirect URLs**: `https://vantcall-esports.pplx.app/**`
+   - **Redirect URLs**: `https://vantcall-esports1.pplx.app/**`
 2. `auth.js` usa la URL del proyecto y la **clave publicable**, que es pública por diseño. La seguridad depende de que **todas las tablas tengan RLS activado**.
 3. En **Authentication → Providers**, Discord está activo. El Client Secret se guarda en Supabase, nunca en este repo.
 4. La función `stripe-webhook` verifica la firma de Stripe y activa el plan. Su secreto se guarda en Supabase, no en el código.
