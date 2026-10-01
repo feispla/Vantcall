@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.link-steam-callback]
 verify_jwt = false
+
+[functions.steam-login]
+verify_jwt = false
