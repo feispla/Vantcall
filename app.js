@@ -151,14 +151,26 @@ const DOC_CONTENT = {
     isHome: true,
     content: `
       <section class="valorant-hero">
+        <div class="hero-media" aria-hidden="true"></div>
+        <div class="hero-grid" aria-hidden="true"></div>
         <div class="hero-badge"><span class="live-dot"></span> BETA ABIERTA · VALORANT · CS2 · LOL</div>
-        <h1>VANTCALL</h1>
+        <h1>VANT<span class="hero-accent">CALL</span></h1>
         <p class="hero-tagline">Ranked, torneos y eventos con datos reales. Inicia sesión con Discord o con tu correo y compite en la plataforma.</p>
         <div class="hero-cta">
           <a href="#/login" class="btn btn-primary btn-lg" data-auth-cta>JUGAR GRATIS</a>
           <a href="#/torneos" class="btn btn-secondary btn-lg">VER TORNEOS</a>
         </div>
+        <div class="hero-meta" aria-label="Lo que incluye VANTS">
+          <span>Ranked VANTS</span><span>Torneos y ligas</span><span>Bot de Discord</span><span>Pagos con Stripe</span>
+        </div>
+        <span class="hero-scroll" aria-hidden="true"></span>
       </section>
+
+      <div class="marquee" aria-hidden="true">
+        <div class="marquee-track">
+          ${Array(2).fill(['VALORANT', 'Counter-Strike 2', 'League of Legends', 'Ranked VANTS', 'Torneos', 'Ligas', 'Scrims']).flat().map((t) => `<span class="marquee-item">${t}</span>`).join('')}
+        </div>
+      </div>
 
       <div class="stats-strip" data-async="home-stats">${skeleton(1)}</div>
 
