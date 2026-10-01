@@ -34,9 +34,9 @@
     [/user already registered|already been registered/i, 'Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.'],
     [/password should be|weak password|password is too weak/i, 'La contraseña es demasiado débil.'],
     [/rate limit|too many|security purposes/i, 'Demasiados intentos. Espera un minuto y vuelve a probar.'],
-    [/provider is not enabled|unsupported provider/i, 'El inicio con Discord no está activado en este momento.'],
+    [/provider is not enabled|unsupported provider/i, 'Ese método de inicio de sesión no está activado en este momento.'],
     [/manual linking is disabled/i, 'La vinculación manual de cuentas está desactivada en Supabase (Authentication → Sign In / Providers → Allow manual linking).'],
-    [/identity is already linked|already linked to another user/i, 'Esa cuenta de Discord ya está vinculada a otro usuario.'],
+    [/identity is already linked|already linked to another user/i, 'Esa cuenta ya está vinculada a otro usuario.'],
     [/same.*password|different from the old/i, 'La nueva contraseña debe ser distinta a la anterior.'],
     [/invalid email|unable to validate email/i, 'El correo no es válido.'],
     [/duplicate key|unique/i, 'Ya existe un registro igual.'],
@@ -76,18 +76,20 @@
     if (!sb || !session) { me = null; return null; }
     const { data: pid } = await sb.rpc('current_player_id');
     const { data: player } = pid ? await sb.from('players').select(PLAYER_COLS).eq('id', pid).maybeSingle() : { data: null };
-    if (!player) { me = { player: null, discord: null, plan: 'free', profile: null }; return me; }
-    const [disc, prof, ent] = await Promise.all([
+    if (!player) { me = { player: null, discord: null, plan: 'free', profile: null, steam: null, perks: [] }; return me; }
+    const [disc, prof, ent, steam, perks] = await Promise.all([
       sb.from('player_discord_accounts').select('discord_id, discord_username, avatar_url').eq('player_id', player.id).maybeSingle(),
       sb.from('profiles').select('bio, visibility').eq('player_id', player.id).maybeSingle(),
       sb.from('entitlements').select('tier, is_active, expires_at').eq('player_id', player.id).eq('is_active', true),
+      sb.from('user_game_accounts').select('handle, display_name, avatar_url, profile_url, verified').eq('user_id', session.user.id).eq('game', 'steam').maybeSingle(),
+      sb.from('plan_content').select('tier, kind, title, body, cta_label, cta_url, sort_order').eq('published', true).order('tier').order('sort_order'),
     ]);
     let plan = 'free';
     for (const e of ent.data || []) {
       const t = String(e.tier || '').toLowerCase();
       if (PLAN_RANK[t] > PLAN_RANK[plan] && (!e.expires_at || new Date(e.expires_at) > new Date())) plan = t;
     }
-    me = { player, discord: disc.data || null, profile: prof.data || null, plan };
+    me = { player, discord: disc.data || null, profile: prof.data || null, plan, steam: (steam && steam.data) || null, perks: (perks && perks.data) || [] };
     return me;
   }
 
@@ -127,6 +129,25 @@
   }
 
   const ICON_DISCORD = typeof DISCORD_SVG === 'string' ? DISCORD_SVG : '';
+  const ICON_GOOGLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.29 14.29A7.2 7.2 0 0 1 4.91 12c0-.8.14-1.57.38-2.29v-3.1H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.1z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.61l4.01 3.1C6.23 6.88 8.88 4.77 12 4.77z"/></svg>';
+  const ICON_STEAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.98 0C5.67 0 .5 4.86.02 11.04l6.43 2.66a3.38 3.38 0 0 1 1.92-.6l.19.01 2.86-4.15v-.06a4.52 4.52 0 1 1 4.52 4.52h-.1l-4.08 2.91v.16a3.39 3.39 0 0 1-6.72.63L.4 15.5A12 12 0 1 0 11.98 0zM7.54 18.21l-1.47-.61a2.54 2.54 0 1 0 1.39-3.46l1.52.63a1.87 1.87 0 1 1-1.44 3.44zm11.42-9.3a3.02 3.02 0 1 0-6.03 0 3.02 3.02 0 0 0 6.03 0zm-5.27 0a2.26 2.26 0 1 1 4.53 0 2.26 2.26 0 0 1-4.53 0z"/></svg>';
+  const METHOD_BUTTONS = (verb) => `
+        <div class="login-methods">
+          <button type="button" class="login-btn login-btn-google" data-oauth="google">${ICON_GOOGLE} ${verb} con Google</button>
+          <button type="button" class="login-btn login-btn-discord" data-oauth="discord">${ICON_DISCORD} ${verb} con Discord</button>
+          <button type="button" class="login-btn login-btn-steam" data-oauth="steam">${ICON_STEAM} ${verb} con Steam</button>
+        </div>`;
+  const PROVIDER_NAME = { email: 'Correo', discord: 'Discord', google: 'Google', steam: 'Steam' };
+  const STEAM_ERRORS = {
+    cancelled: 'Cancelaste el inicio con Steam.',
+    verification_failed: 'Steam no pudo verificar tu identidad. Inténtalo de nuevo.',
+    already_linked: 'Esa cuenta de Steam ya está vinculada a otro usuario VANTS.',
+    link_failed: 'No se pudo vincular Steam. Inténtalo de nuevo en unos minutos.',
+    account_create_failed: 'No se pudo crear tu cuenta con Steam. Inténtalo de nuevo.',
+    login_failed: 'No se pudo iniciar sesión con Steam. Inténtalo de nuevo.',
+    start_failed: 'No se pudo iniciar la conexión con Steam.',
+  };
+  const isPlaceholderEmail = (e) => /\.invalid$/i.test(e || '');
 
   // ---------- páginas de auth ----------
   const PAGES = {
@@ -135,11 +156,9 @@
       content: `
       <div class="login-page">
         <h1>Iniciar sesión</h1>
-        <p class="login-sub">Accede con Discord o con tu correo</p>
+        <p class="login-sub">Accede con Google, Discord, Steam o tu correo</p>
         <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
-        <div class="login-methods">
-          <button type="button" class="login-btn login-btn-discord" data-oauth="discord">${ICON_DISCORD} Continuar con Discord</button>
-        </div>
+${METHOD_BUTTONS('Continuar')}
         <div class="login-divider"><span>o con correo</span></div>
         <form class="login-form" data-form="login" novalidate>
           <div class="login-form-group">
@@ -153,7 +172,7 @@
           <div class="login-form-actions"><span></span><a href="#/recuperar">¿Olvidaste tu contraseña?</a></div>
           <button type="submit" class="btn btn-primary login-submit">Iniciar sesión</button>
         </form>
-        <p class="login-note">VANTCALL nunca te pedirá la contraseña de Discord: el login ocurre en discord.com. Tu sesión la gestiona Supabase Auth.</p>
+        <p class="login-note">VANTS nunca te pedirá tu contraseña de Google, Discord o Steam: el acceso ocurre en su propia web y tu sesión la gestiona Supabase Auth.</p>
         <p class="login-switch">¿No tienes cuenta? <a href="#/registro">Regístrate gratis</a></p>
       </div>`,
     },
@@ -165,9 +184,7 @@
         <h1>Crear cuenta</h1>
         <p class="login-sub">Tu identidad de competidor para VALORANT, CS2 y LoL</p>
         <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
-        <div class="login-methods">
-          <button type="button" class="login-btn login-btn-discord" data-oauth="discord">${ICON_DISCORD} Registrarse con Discord</button>
-        </div>
+${METHOD_BUTTONS('Registrarse')}
         <div class="login-divider"><span>o con correo</span></div>
         <form class="login-form" data-form="registro" novalidate>
           <div class="login-form-group">
@@ -278,20 +295,55 @@
   if (typeof DOC_CONTENT === 'object') Object.assign(DOC_CONTENT, PAGES);
 
   // ---------- acciones ----------
-  async function oauthDiscord(msgEl) {
+  const OAUTH_OPTS = { discord: { scopes: 'identify email' }, google: { queryParams: { prompt: 'select_account' } } };
+  const topGo = (url) => { try { window.top.location.href = url; } catch (_) { window.location.href = url; } };
+
+  async function oauth(provider, msgEl) {
     if (!sb) return showMsg(msgEl, 'No se pudo cargar el sistema de inicio de sesión. Recarga la página.', 'error');
+    if (provider === 'steam') return steamLogin(msgEl);
     const prov = await loadProviders();
-    if (!prov.discord) return showMsg(msgEl, 'El inicio con Discord no está activo. Usa tu correo mientras tanto.', 'warning');
-    const { error } = await sb.auth.signInWithOAuth({
-      provider: 'discord',
-      options: { redirectTo: baseUrl() + '?next=cuenta', scopes: 'identify email' },
+    if (!prov[provider]) return showMsg(msgEl, 'El inicio con ' + PROVIDER_NAME[provider] + ' no está activo. Usa otro método mientras tanto.', 'warning');
+    const { data, error } = await sb.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: baseUrl() + '?next=cuenta', skipBrowserRedirect: true, ...(OAUTH_OPTS[provider] || {}) },
     });
-    if (error) showMsg(msgEl, humanError(error), 'error');
+    if (error) return showMsg(msgEl, humanError(error), 'error');
+    if (data && data.url) topGo(data.url);
   }
 
-  async function linkDiscord(msgEl) {
-    const { error } = await sb.auth.linkIdentity({ provider: 'discord', options: { redirectTo: baseUrl() + '?next=cuenta', scopes: 'identify email' } });
-    if (error) showMsg(msgEl, humanError(error), 'error');
+  function steamLogin(msgEl) {
+    showMsg(msgEl, 'Conectando con Steam…', 'info');
+    topGo(SUPABASE_URL + '/functions/v1/steam-login?redirect_to=' + encodeURIComponent(baseUrl()));
+  }
+
+  async function linkProvider(provider, msgEl) {
+    const { data, error } = await sb.auth.linkIdentity({ provider, options: { redirectTo: baseUrl() + '?next=cuenta', skipBrowserRedirect: true, ...(OAUTH_OPTS[provider] || {}) } });
+    if (error) return showMsg(msgEl, humanError(error), 'error');
+    if (data && data.url) topGo(data.url);
+  }
+
+  async function linkSteam(msgEl, btn) {
+    if (!session) return;
+    btn && (btn.disabled = true);
+    try {
+      const r = await fetch(SUPABASE_URL + '/functions/v1/steam-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({ redirect_to: baseUrl() }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.login_url) throw new Error(j.error === 'redirect_not_allowed' ? 'Esta dirección web aún no está autorizada para Steam.' : 'No se pudo iniciar la vinculación con Steam.');
+      topGo(j.login_url);
+    } catch (e) { showMsg(msgEl, e.message, 'error'); btn && (btn.disabled = false); }
+  }
+
+  async function unlinkSteam(msgEl, btn) {
+    btn && (btn.disabled = true);
+    const { error } = await sb.functions.invoke('unlink-steam', { method: 'POST' });
+    if (error) { btn && (btn.disabled = false); return showMsg(msgEl, 'No se pudo desvincular Steam.', 'error'); }
+    await loadMe();
+    flags.set('vant_flash', JSON.stringify({ text: 'Steam desvinculado.', kind: 'info' }));
+    if (typeof router === 'function') router();
   }
 
   const HANDLERS = {
@@ -452,25 +504,37 @@
     }
     const u = session.user;
     const p = me && me.player;
-    const identities = (u.identities || []).map((i) => i.provider);
+    const identities = (u.identities || []).map((i) => i.provider).filter((i) => !(i === 'email' && isPlaceholderEmail(u.email)));
+    const steamAcc = me && me.steam;
+    const hasGoogle = identities.includes('google');
+    if (steamAcc || (u.app_metadata || {}).steam_id) identities.push('steam');
     const hasDiscord = identities.includes('discord') || (me && me.discord);
     const plan = (me && me.plan) || 'free';
     const opt = (v, cur, label) => `<option value="${v}"${v === (cur || '') ? ' selected' : ''}>${label}</option>`;
     root.innerHTML = `
       <div class="account-head">
         <div class="player-avatar player-avatar-lg">${p && p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="">` : esc((displayName() || '?').slice(0, 2).toUpperCase())}</div>
-        <div><h1>${esc(displayName())}</h1><div class="player-sub">${p ? '@' + esc(p.username) + ' · ' : ''}${esc(u.email || '')}</div>
+        <div><h1>${esc(displayName())}</h1><div class="player-sub">${p ? '@' + esc(p.username) : ''}${!isPlaceholderEmail(u.email) && u.email ? (p ? ' · ' : '') + esc(u.email) : ''}</div>
         ${p ? `<a class="link-inline" href="#/jugador/${encodeURIComponent(p.username)}">Ver perfil público</a>` : ''}</div>
       </div>
       <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
       ${!p ? '<div class="auth-msg auth-msg-warning">Estamos creando tu perfil de jugador. Si no aparece en unos segundos, recarga la página.</div>' : ''}
       <div class="account-grid">
         <div class="account-item"><span>Plan</span><strong class="account-plan account-plan-${esc(plan)}">${esc(plan.toUpperCase())}</strong></div>
-        <div class="account-item"><span>Correo</span><strong>${u.email_confirmed_at ? 'Verificado' : 'Pendiente de verificar'}</strong></div>
+        <div class="account-item"><span>Correo</span><strong>${isPlaceholderEmail(u.email) ? 'Sin correo (cuenta Steam)' : u.email_confirmed_at ? 'Verificado' : 'Pendiente de verificar'}</strong></div>
         <div class="account-item"><span>Discord</span><strong>${hasDiscord ? esc((me && me.discord && me.discord.discord_username) || 'Vinculado') : 'No vinculado'}</strong>
           ${hasDiscord ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-discord>Vincular Discord</button>`}</div>
-        <div class="account-item"><span>Métodos de acceso</span><strong>${identities.map((i) => i === 'discord' ? 'Discord' : 'Correo').join(' + ') || 'Correo'}</strong></div>
+        <div class="account-item"><span>Google</span><strong>${hasGoogle ? 'Vinculado' : 'No vinculado'}</strong>
+          ${hasGoogle ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-google>Vincular Google</button>`}</div>
+        <div class="account-item account-item-steam"><span>Steam</span>
+          ${steamAcc ? `<strong class="steam-acc">${steamAcc.avatar_url ? `<img src="${esc(steamAcc.avatar_url)}" alt="" width="22" height="22">` : ''}${steamAcc.profile_url ? `<a href="${esc(steamAcc.profile_url)}" target="_blank" rel="noopener noreferrer">${esc(steamAcc.display_name || steamAcc.handle)}</a>` : esc(steamAcc.display_name || steamAcc.handle)}</strong>
+            ${isPlaceholderEmail(u.email) ? '' : '<button type="button" class="btn btn-secondary btn-sm" data-unlink-steam>Desvincular</button>'}`
+          : `<strong>No vinculado</strong><button type="button" class="btn btn-secondary btn-sm" data-link-steam>Vincular Steam</button>`}</div>
+        <div class="account-item"><span>Métodos de acceso</span><strong>${[...new Set(identities)].map((i) => PROVIDER_NAME[i] || i).join(' + ') || 'Correo'}</strong></div>
       </div>
+      ${plan !== 'free' && me && me.perks && me.perks.length ? `
+      <h2 class="account-h2">Tus ventajas ${esc(plan.toUpperCase())}</h2>
+      <div class="perk-grid">${me.perks.map((k) => `<div class="perk-card perk-${esc(k.tier)}"><span class="perk-tier">${esc(String(k.tier).toUpperCase())}</span><h3>${esc(k.title)}</h3><p>${esc(k.body || '')}</p>${k.cta_url && k.cta_label ? `<a class="link-inline" href="${esc(k.cta_url)}"${/^https?:/.test(k.cta_url) ? ' target="_blank" rel="noopener noreferrer"' : ''}>${esc(k.cta_label)}</a>` : ''}</div>`).join('')}</div>` : ''}
 
       ${p ? `
       <h2 class="account-h2">Perfil de competidor</h2>
@@ -562,7 +626,7 @@
     const flash = flags.get('vant_flash');
     if (flash && msg) { const f = JSON.parse(flash); flags.del('vant_flash'); showMsg(msg, f.text, f.kind); }
 
-    main.querySelectorAll('[data-oauth="discord"]').forEach((b) => b.addEventListener('click', () => oauthDiscord(msg)));
+    main.querySelectorAll('[data-oauth]').forEach((b) => b.addEventListener('click', () => oauth(b.dataset.oauth, msg)));
     if (pageId !== 'cuenta') main.querySelectorAll('form[data-form]').forEach((f) => bindForm(f, msg));
     main.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => startCheckout(b.dataset.checkout, msg, b)));
 
@@ -574,7 +638,13 @@
         const lo = root.querySelector('[data-logout]');
         if (lo) lo.addEventListener('click', async () => { await logEvent('cierre_sesion', {}); await sb.auth.signOut(); go('inicio'); });
         const ld = root.querySelector('[data-link-discord]');
-        if (ld) ld.addEventListener('click', () => linkDiscord(m));
+        if (ld) ld.addEventListener('click', () => linkProvider('discord', m));
+        const lg = root.querySelector('[data-link-google]');
+        if (lg) lg.addEventListener('click', () => linkProvider('google', m));
+        const ls = root.querySelector('[data-link-steam]');
+        if (ls) ls.addEventListener('click', () => linkSteam(m, ls));
+        const us = root.querySelector('[data-unlink-steam]');
+        if (us) us.addEventListener('click', () => unlinkSteam(m, us));
         const pf = root.querySelector('form[data-form="perfil"]'); if (pf) bindForm(pf, m);
         const st = root.querySelector('form[data-form="soporte"]'); if (st) bindForm(st, root.querySelector('[data-support-msg]'));
         const fl = flags.get('vant_flash'); if (fl && m) { const f = JSON.parse(fl); flags.del('vant_flash'); showMsg(m, f.text, f.kind); }
@@ -596,16 +666,27 @@
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next');
     const authErr = params.get('error_description');
+    const steamToken = params.get('steam_token');
+    const steamErr = params.get('steam_error');
+    const steamLinked = params.get('steam_linked');
+
+    if (steamToken) {
+      const { error } = await sb.auth.verifyOtp({ token_hash: steamToken, type: params.get('steam_type') || 'magiclink' });
+      if (error) flags.set('vant_flash', JSON.stringify({ text: STEAM_ERRORS.login_failed, kind: 'error' }));
+      else flags.set('vant_flash', JSON.stringify({ text: 'Sesión iniciada con Steam.', kind: 'success' }));
+    }
+    if (steamErr) flags.set('vant_flash', JSON.stringify({ text: STEAM_ERRORS[steamErr] || STEAM_ERRORS.login_failed, kind: steamErr === 'cancelled' ? 'info' : 'error' }));
+    if (steamLinked) flags.set('vant_flash', JSON.stringify({ text: 'Cuenta de Steam vinculada y verificada.', kind: 'success' }));
 
     const { data } = await sb.auth.getSession();
     session = data.session;
     if (session) await loadMe();
     updateHeader();
 
-    if (next || authErr || params.get('code')) {
+    if (next || authErr || params.get('code') || steamToken || steamErr || steamLinked) {
       if (authErr) {
         flags.set('vant_flash', JSON.stringify({ text: /expired|invalid/i.test(authErr) ? 'El enlace ha caducado o ya se usó. Solicita uno nuevo.' : humanError({ message: authErr }), kind: 'error' }));
-      } else if (!session && params.get('code')) {
+      } else if (!session && params.get('code') && !steamToken) {
         flags.set('vant_flash', JSON.stringify({ text: 'Correo confirmado. Inicia sesión con tu contraseña (el enlace se abrió en otro navegador).', kind: 'info' }));
       }
       const target = session ? (next || 'cuenta') : (next === 'nueva-contrasena' ? 'recuperar' : 'login');
