@@ -94,6 +94,8 @@
     }
     let adminRole = null;
     try { const r = await sb.rpc('web_admin_role'); adminRole = r.data || null; } catch (_) { adminRole = null; }
+    // El dueño y los admins ven siempre la zona completa (ELITE), entren con el método que entren
+    if (adminRole === 'owner' || adminRole === 'admin') plan = 'elite';
     me = { player, discord: disc.data || null, profile: prof.data || null, plan, steam: (steam && steam.data) || null, perks: (perks && perks.data) || [], adminRole };
     return me;
   }
