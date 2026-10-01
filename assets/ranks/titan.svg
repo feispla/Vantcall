@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -6 128 128" role="img" aria-label="Rango titan"><defs>
+      <linearGradient id="vr-titan-f-metal" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#dcffe9"/><stop offset=".45" stop-color="#3ddc84"/><stop offset="1" stop-color="#0d5a33"/>
+      </linearGradient>
+      <linearGradient id="vr-titan-f-rim" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#dcffe9"/><stop offset=".5" stop-color="#3ddc84"/><stop offset="1" stop-color="#0d5a33"/>
+      </linearGradient>
+      <linearGradient id="vr-titan-f-dark" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#0d5a33"/><stop offset="1" stop-color="#03190e"/>
+      </linearGradient>
+      <radialGradient id="vr-titan-f-face" cx=".5" cy=".3" r=".8">
+        <stop offset="0" stop-color="#0d5a33"/><stop offset=".7" stop-color="#03190e"/><stop offset="1" stop-color="#050608"/>
+      </radialGradient>
+      <linearGradient id="vr-titan-f-wing" x1="1" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3ddc84"/><stop offset="1" stop-color="#0d5a33"/>
+      </linearGradient>
+      <linearGradient id="vr-titan-f-hi" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#dcffe9"/><stop offset="1" stop-color="#dcffe9" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="vr-titan-f-acc" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#9dffc6"/>
+      </linearGradient>
+      <linearGradient id="vr-titan-f-sheen" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <radialGradient id="vr-titan-f-ray" cx=".5" cy=".5" r=".5">
+        <stop offset=".2" stop-color="#9dffc6" stop-opacity=".9"/><stop offset="1" stop-color="#3ddc84" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="vr-titan-f-flame" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#0d5a33"/><stop offset=".5" stop-color="#3ddc84"/><stop offset="1" stop-color="#9dffc6"/>
+      </linearGradient>
+      <linearGradient id="vr-titan-f-gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff3c4"/><stop offset=".5" stop-color="#f2b843"/><stop offset="1" stop-color="#7a4a06"/>
+      </linearGradient>
+      <radialGradient id="vr-titan-f-halo" cx=".5" cy=".5" r=".5">
+        <stop offset="0" stop-color="#3ddc84" stop-opacity=".55"/><stop offset="1" stop-color="#3ddc84" stop-opacity="0"/>
+      </radialGradient>
+    </defs><circle cx="60" cy="60" r="58" fill="url(#vr-titan-f-halo)"/><g><path d="M36 67 L19 69 Q25 83 39 86 L36 82 Z" fill="url(#vr-titan-f-wing)" stroke="url(#vr-titan-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 70 L23 71" stroke="url(#vr-titan-f-hi)" stroke-width="1" opacity=".6"/><path d="M36 56 L14 54 Q20 68 34 71 L36 71 Z" fill="url(#vr-titan-f-wing)" stroke="url(#vr-titan-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 59 L18 56" stroke="url(#vr-titan-f-hi)" stroke-width="1" opacity=".6"/><path d="M36 45 L9 39 Q15 53 29 56 L36 60 Z" fill="url(#vr-titan-f-wing)" stroke="url(#vr-titan-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 48 L13 41" stroke="url(#vr-titan-f-hi)" stroke-width="1" opacity=".6"/><path d="M36 34 L4 24 Q10 38 24 41 L36 49 Z" fill="url(#vr-titan-f-wing)" stroke="url(#vr-titan-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 37 L8 26" stroke="url(#vr-titan-f-hi)" stroke-width="1" opacity=".6"/></g><g transform="translate(120 0) scale(-1 1)"><path d="M36 67 L19 69 Q25 83 39 86 L36 82 Z" fill="url(#vr-titan-f-wing)" stroke="url(#vr-titan-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 70 L23 71" stroke="url(#vr-titan-f-hi)" stroke-width="1" opacity=".6"/><path d="M36 56 L14 54 Q20 68 34 71 L36 71 Z" fill="url(#vr-titan-f-wing)" stroke="url(#vr-titan-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 59 L18 56" stroke="url(#vr-titan-f-hi)" stroke-width="1" opacity=".6"/><path d="M36 45 L9 39 Q15 53 29 56 L36 60 Z" fill="url(#vr-titan-f-wing)" stroke="url(#vr-titan-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 48 L13 41" stroke="url(#vr-titan-f-hi)" stroke-width="1" opacity=".6"/><path d="M36 34 L4 24 Q10 38 24 41 L36 49 Z" fill="url(#vr-titan-f-wing)" stroke="url(#vr-titan-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 37 L8 26" stroke="url(#vr-titan-f-hi)" stroke-width="1" opacity=".6"/></g><g transform="translate(60 64) scale(0.86) translate(-60 -60)"><path d="M60 12 L78 20 L99 12 L94 40 V62 C94 84 78 98 60 110 C42 98 26 84 26 62 V40 L21 12 L42 20 Z" transform="translate(0 3)" fill="#000" opacity=".45"/><path d="M60 12 L78 20 L99 12 L94 40 V62 C94 84 78 98 60 110 C42 98 26 84 26 62 V40 L21 12 L42 20 Z" fill="url(#vr-titan-f-rim)" stroke="url(#vr-titan-f-dark)" stroke-width="1.5" stroke-linejoin="round"/><path d="M60 12 L78 20 L99 12 L94 40 V62 C94 84 78 98 60 110 C42 98 26 84 26 62 V40 L21 12 L42 20 Z" transform="translate(60 60) scale(.8) translate(-60 -60)" fill="url(#vr-titan-f-face)" stroke="url(#vr-titan-f-hi)" stroke-width="1.2" stroke-linejoin="round"/><path d="M39 43 H52 L60 59 L68 43 H81 L60 82 Z" fill="url(#vr-titan-f-metal)" stroke="url(#vr-titan-f-dark)" stroke-width="1.2" stroke-linejoin="round"/><path d="M39 43 H52 L60 59 L57 59 Z" fill="#fff" opacity=".35"/><path d="M48 87 l3 3 l-3 3 l-3 -3 Z" fill="url(#vr-titan-f-acc)"/><path d="M56 87 l3 3 l-3 3 l-3 -3 Z" fill="url(#vr-titan-f-acc)"/><path d="M64 87 l3 3 l-3 3 l-3 -3 Z" fill="url(#vr-titan-f-acc)"/><path d="M72 87 l3 3 l-3 3 l-3 -3 Z" fill="url(#vr-titan-f-acc)"/><path d="M60 12 L78 20 L99 12 L94 40 V62 C94 84 78 98 60 110 C42 98 26 84 26 62 V40 L21 12 L42 20 Z" fill="url(#vr-titan-f-sheen)" opacity=".5"/></g><path d="M41 24 L45 9 L53 17 L60 6 L67 17 L75 9 L79 24 Z" fill="url(#vr-titan-f-metal)" stroke="url(#vr-titan-f-dark)" stroke-width="1.4" stroke-linejoin="round"/>
+      <circle cx="60" cy="12" r="2.4" fill="url(#vr-titan-f-acc)"/></svg>

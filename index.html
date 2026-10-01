@@ -16,7 +16,13 @@
   <link rel="stylesheet" href="./premium.css">
   <link rel="preload" as="image" href="./assets/hero-arena.jpg">
 
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0c'/%3E%3Cpath d='M8 10L16 22L24 10' stroke='%23FF0D2E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="./assets/brand/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/brand/favicon-32.png">
+  <link rel="apple-touch-icon" href="./assets/brand/apple-touch-icon.png">
+  <meta name="theme-color" content="#0b131b">
+  <meta property="og:title" content="VANTS — Plataforma competitiva">
+  <meta property="og:description" content="Ranked, torneos y ligas de VALORANT, CS2 y League of Legends.">
+  <meta property="og:image" content="./assets/brand/og-vants.png">
 </head>
 <body>
   <a href="#content-area" class="skip-link">Saltar al contenido</a>
@@ -29,11 +35,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
         <a href="#/inicio" class="logo">
-          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="8" fill="#0a0a0c"/>
-            <path d="M8 10L16 22L24 10" stroke="#FF0D2E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="16" cy="22" r="1.5" fill="#FF0D2E"/>
-          </svg>
+          <img src="./assets/brand/vants-mark.svg" alt="" width="30" height="30">
           VANTS
         </a>
       </div>
@@ -77,11 +79,7 @@
       <div class="footer-grid">
         <div class="footer-col footer-brand">
           <div class="footer-logo">
-            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="32" height="32" rx="8" fill="#0a0a0c"/>
-              <path d="M8 10L16 22L24 10" stroke="#FF0D2E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="16" cy="22" r="1.5" fill="#FF0D2E"/>
-            </svg>
+            <img src="./assets/brand/vants-mark.svg" alt="" width="30" height="30">
             <span>VANTS</span>
           </div>
           <p>VANTS · circuito competitivo.<br>Ranked, torneos, calendario y eventos.</p>
@@ -116,6 +114,7 @@
   </div>
 
   <script src="./vendor/supabase-2.57.4.min.js" defer></script>
+  <script src="./ranks.js" defer></script>
   <script src="./db.js" defer></script>
   <script src="./app.js" defer></script>
   <script src="./auth.js" defer></script>

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -6 128 128" role="img" aria-label="Rango hierro"><defs>
+      <linearGradient id="vr-hierro-f-metal" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e3e7eb"/><stop offset=".45" stop-color="#8b939c"/><stop offset="1" stop-color="#3a4048"/>
+      </linearGradient>
+      <linearGradient id="vr-hierro-f-rim" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#e3e7eb"/><stop offset=".5" stop-color="#8b939c"/><stop offset="1" stop-color="#3a4048"/>
+      </linearGradient>
+      <linearGradient id="vr-hierro-f-dark" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3a4048"/><stop offset="1" stop-color="#14171b"/>
+      </linearGradient>
+      <radialGradient id="vr-hierro-f-face" cx=".5" cy=".3" r=".8">
+        <stop offset="0" stop-color="#3a4048"/><stop offset=".7" stop-color="#14171b"/><stop offset="1" stop-color="#050608"/>
+      </radialGradient>
+      <linearGradient id="vr-hierro-f-wing" x1="1" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8b939c"/><stop offset="1" stop-color="#3a4048"/>
+      </linearGradient>
+      <linearGradient id="vr-hierro-f-hi" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e3e7eb"/><stop offset="1" stop-color="#e3e7eb" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="vr-hierro-f-acc" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c3c9cf"/>
+      </linearGradient>
+      <linearGradient id="vr-hierro-f-sheen" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <radialGradient id="vr-hierro-f-ray" cx=".5" cy=".5" r=".5">
+        <stop offset=".2" stop-color="#c3c9cf" stop-opacity=".9"/><stop offset="1" stop-color="#8b939c" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="vr-hierro-f-flame" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#3a4048"/><stop offset=".5" stop-color="#8b939c"/><stop offset="1" stop-color="#c3c9cf"/>
+      </linearGradient>
+      <linearGradient id="vr-hierro-f-gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff3c4"/><stop offset=".5" stop-color="#f2b843"/><stop offset="1" stop-color="#7a4a06"/>
+      </linearGradient>
+      <radialGradient id="vr-hierro-f-halo" cx=".5" cy=".5" r=".5">
+        <stop offset="0" stop-color="#8b939c" stop-opacity=".55"/><stop offset="1" stop-color="#8b939c" stop-opacity="0"/>
+      </radialGradient>
+    </defs><g transform="translate(60 60) scale(1) translate(-60 -60)"><path d="M60 14 L92 26 V60 C92 81 78 95 60 106 C42 95 28 81 28 60 V26 Z" transform="translate(0 3)" fill="#000" opacity=".45"/><path d="M60 14 L92 26 V60 C92 81 78 95 60 106 C42 95 28 81 28 60 V26 Z" fill="url(#vr-hierro-f-rim)" stroke="url(#vr-hierro-f-dark)" stroke-width="1.5" stroke-linejoin="round"/><path d="M60 14 L92 26 V60 C92 81 78 95 60 106 C42 95 28 81 28 60 V26 Z" transform="translate(60 60) scale(.8) translate(-60 -60)" fill="url(#vr-hierro-f-face)" stroke="url(#vr-hierro-f-hi)" stroke-width="1.2" stroke-linejoin="round"/><path d="M39 43 H52 L60 59 L68 43 H81 L60 82 Z" fill="url(#vr-hierro-f-metal)" stroke="url(#vr-hierro-f-dark)" stroke-width="1.2" stroke-linejoin="round"/><path d="M39 43 H52 L60 59 L57 59 Z" fill="#fff" opacity=".35"/><path d="M60 87 l3 3 l-3 3 l-3 -3 Z" fill="url(#vr-hierro-f-acc)"/><path d="M60 14 L92 26 V60 C92 81 78 95 60 106 C42 95 28 81 28 60 V26 Z" fill="url(#vr-hierro-f-sheen)" opacity=".5"/></g></svg>
