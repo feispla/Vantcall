@@ -28,7 +28,7 @@ async function loadToken() {
   if (typeof data === 'string' && data) BOT_TOKEN = data;
   tokenLoaded = true;
 }
-const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbeta.pplx.app').replace(/\/$/, '');
+const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbetaa.pplx.app').replace(/\/$/, '');
 
 type Category = 'anuncios' | 'registros' | 'ranked' | 'staff' | 'logs';
 const CATEGORIES: Category[] = ['anuncios', 'registros', 'ranked', 'staff', 'logs'];
@@ -121,7 +121,7 @@ async function targetFor(category: Category): Promise<Target | null> {
 async function send(target: Target, embed: Embed): Promise<{ ok: boolean; status: number; retryAfter?: number; error?: string }> {
   const body = JSON.stringify({ embeds: [{ ...embed, footer: { text: 'VANTS · vantcall esports' }, timestamp: new Date().toISOString() }], allowed_mentions: { parse: [] } });
   const url = target.kind === 'bot' ? `https://discord.com/api/v10/channels/${target.channelId}/messages` : `${target.url}?wait=true`;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'User-Agent': 'VANTS-Notify (https://vantsbeta.pplx.app, 1.0)' };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'User-Agent': 'VANTS-Notify (https://vantsbetaa.pplx.app, 1.0)' };
   if (target.kind === 'bot') headers.Authorization = `Bot ${BOT_TOKEN}`;
   const r = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(8000) });
   if (r.ok) return { ok: true, status: r.status };

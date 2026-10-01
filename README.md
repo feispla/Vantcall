@@ -26,10 +26,10 @@ The connected VANTSBETA schema links Discord through `players.discord_user_id` a
 
 ## Acceso: Google, Discord, Steam y correo (octubre 2026)
 
-- Web publicada: `https://vantsbeta.pplx.app/`.
-- **Google y Discord** usan Supabase OAuth (PKCE). En Supabase → Authentication → URL Configuration deben estar `https://vantsbeta.pplx.app` (Site URL) y `https://vantsbeta.pplx.app/**` (Redirect URLs).
+- Web publicada: `https://vantsbetaa.pplx.app/`.
+- **Google y Discord** usan Supabase OAuth (PKCE). En Supabase → Authentication → URL Configuration deben estar `https://vantsbetaa.pplx.app` (Site URL) y `https://vantsbetaa.pplx.app/**` (Redirect URLs).
 - **Google Cloud**: el cliente OAuth debe tener como *Authorized redirect URI* `https://qtetsgwwsvqzquxssudj.supabase.co/auth/v1/callback`.
-- **Steam** usa la Edge Function `steam-login` (OpenID 2.0). Devuelve `steam_token` (magic link de un solo uso que el cliente canjea con `verifyOtp`), `steam_linked=1` o `steam_error`. La lista de destinos permitidos incluye `https://vantsbeta.pplx.app/` y se puede ampliar con el secreto `STEAM_LOGIN_REDIRECTS`.
+- **Steam** usa la Edge Function `steam-login` (OpenID 2.0). Devuelve `steam_token` (magic link de un solo uso que el cliente canjea con `verifyOtp`), `steam_linked=1` o `steam_error`. La lista de destinos permitidos incluye `https://vantsbetaa.pplx.app/` y se puede ampliar con el secreto `STEAM_LOGIN_REDIRECTS`.
 - En **Mi cuenta** se puede vincular Google, Discord y Steam, y ver las ventajas del plan desde `plan_content`.
 
 ## Panel admin, Zona VIP y bot de Discord (oct 2026)
