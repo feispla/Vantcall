@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VANT SPORTS — Competitivo</title>
-  <meta name="description" content="VANTCALL Esports: ranked, torneos y calendario de VALORANT, CS2 y LoL con datos reales. Inicia sesión con Discord o correo.">
+  <meta name="description" content="VANTCALL Esports: ranked, torneos y calendario de VALORANT, CS2 y LoL con datos reales. Entra con Google, Discord, Steam o correo.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="./base.css">
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./premium.css">
+  <link rel="stylesheet" href="./vip.css">
   <link rel="preload" as="image" href="./assets/hero-arena.jpg">
 
   <link rel="icon" type="image/svg+xml" href="./assets/brand/favicon.svg">
@@ -48,6 +49,7 @@
         <a href="#/torneos" class="nav-item"><span class="nav-number">04</span> TORNEOS</a>
         <a href="#/jugadores" class="nav-item"><span class="nav-number">05</span> JUGADORES</a>
         <a href="#/precios" class="nav-item"><span class="nav-number">06</span> PRECIOS</a>
+        <a href="#/zona" class="nav-item nav-item-zona" data-zona-link><span class="nav-number">07</span> ZONA VIP</a>
       </nav>
 
       <!-- Mobile nav -->
@@ -58,9 +60,14 @@
         <a href="#/torneos" class="mobile-nav-item"><span class="mobile-nav-number">04</span> TORNEOS</a>
         <a href="#/jugadores" class="mobile-nav-item"><span class="mobile-nav-number">05</span> JUGADORES</a>
         <a href="#/precios" class="mobile-nav-item"><span class="mobile-nav-number">06</span> PRECIOS</a>
+        <a href="#/zona" class="mobile-nav-item" data-zona-link><span class="mobile-nav-number">07</span> ZONA VIP</a>
       </nav>
 
       <div class="header-right">
+        <a href="#/admin" class="header-link header-admin" id="admin-link" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/></svg>
+          <span>Admin</span>
+        </a>
         <a href="#/login" class="header-link" id="auth-link">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
           <span id="auth-link-label">Login</span>
@@ -97,6 +104,7 @@
           <a href="#/precios">Precios</a>
           <a href="#/torneos">Torneos</a>
           <a href="#/registro">Registro</a>
+          <a href="#/zona">Zona VIP</a>
         </div>
         <div class="footer-col">
           <div class="footer-heading">SEÑAL</div>
@@ -118,6 +126,8 @@
   <script src="./db.js" defer></script>
   <script src="./app.js" defer></script>
   <script src="./auth.js" defer></script>
+  <script src="./zona.js" defer></script>
+  <script src="./admin.js" defer></script>
   <script src="./premium.js" defer></script>
 </body>
 </html>
