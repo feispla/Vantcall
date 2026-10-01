@@ -9,7 +9,7 @@ import nacl from 'npm:tweetnacl@1.0.3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const ENV_PUBLIC_KEY = Deno.env.get('DISCORD_PUBLIC_KEY') ?? '';
-const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbeta.pplx.app').replace(/\/$/, '');
+const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbetaa.pplx.app').replace(/\/$/, '');
 const TZ = Deno.env.get('VANTS_TZ') ?? 'Europe/Madrid';
 const INVITE = 'https://discord.gg/rCHE7jvRS4';
 const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });

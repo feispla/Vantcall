@@ -16,7 +16,7 @@ const service = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_K
 const API = 'https://discord.com/api/v10';
 const DEFAULT_GUILD = '1546641331927908472';
 const ENDPOINT = `${SUPABASE_URL}/functions/v1/discord-commands`;
-const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbeta.pplx.app').replace(/\/$/, '');
+const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbetaa.pplx.app').replace(/\/$/, '');
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -33,7 +33,7 @@ async function secret(name: string): Promise<string | null> {
 async function discord(token: string, path: string, init: RequestInit = {}) {
   const r = await fetch(API + path, {
     ...init,
-    headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'VANTS-Admin (https://vantsbeta.pplx.app, 1.0)', ...(init.headers ?? {}) },
+    headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'VANTS-Admin (https://vantsbetaa.pplx.app, 1.0)', ...(init.headers ?? {}) },
     signal: AbortSignal.timeout(10000),
   });
   const text = await r.text();
