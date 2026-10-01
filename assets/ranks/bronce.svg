@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -6 128 128" role="img" aria-label="Rango bronce"><defs>
+      <linearGradient id="vr-bronce-f-metal" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffd4ae"/><stop offset=".45" stop-color="#c27a3a"/><stop offset="1" stop-color="#5a2c10"/>
+      </linearGradient>
+      <linearGradient id="vr-bronce-f-rim" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ffd4ae"/><stop offset=".5" stop-color="#c27a3a"/><stop offset="1" stop-color="#5a2c10"/>
+      </linearGradient>
+      <linearGradient id="vr-bronce-f-dark" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#5a2c10"/><stop offset="1" stop-color="#1c0d05"/>
+      </linearGradient>
+      <radialGradient id="vr-bronce-f-face" cx=".5" cy=".3" r=".8">
+        <stop offset="0" stop-color="#5a2c10"/><stop offset=".7" stop-color="#1c0d05"/><stop offset="1" stop-color="#050608"/>
+      </radialGradient>
+      <linearGradient id="vr-bronce-f-wing" x1="1" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#c27a3a"/><stop offset="1" stop-color="#5a2c10"/>
+      </linearGradient>
+      <linearGradient id="vr-bronce-f-hi" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffd4ae"/><stop offset="1" stop-color="#ffd4ae" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="vr-bronce-f-acc" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f0a868"/>
+      </linearGradient>
+      <linearGradient id="vr-bronce-f-sheen" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <radialGradient id="vr-bronce-f-ray" cx=".5" cy=".5" r=".5">
+        <stop offset=".2" stop-color="#f0a868" stop-opacity=".9"/><stop offset="1" stop-color="#c27a3a" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="vr-bronce-f-flame" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#5a2c10"/><stop offset=".5" stop-color="#c27a3a"/><stop offset="1" stop-color="#f0a868"/>
+      </linearGradient>
+      <linearGradient id="vr-bronce-f-gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff3c4"/><stop offset=".5" stop-color="#f2b843"/><stop offset="1" stop-color="#7a4a06"/>
+      </linearGradient>
+      <radialGradient id="vr-bronce-f-halo" cx=".5" cy=".5" r=".5">
+        <stop offset="0" stop-color="#c27a3a" stop-opacity=".55"/><stop offset="1" stop-color="#c27a3a" stop-opacity="0"/>
+      </radialGradient>
+    </defs><g><path d="M36 34 L16 24 Q22 38 36 41 L36 49 Z" fill="url(#vr-bronce-f-wing)" stroke="url(#vr-bronce-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 37 L20 26" stroke="url(#vr-bronce-f-hi)" stroke-width="1" opacity=".6"/></g><g transform="translate(120 0) scale(-1 1)"><path d="M36 34 L16 24 Q22 38 36 41 L36 49 Z" fill="url(#vr-bronce-f-wing)" stroke="url(#vr-bronce-f-rim)" stroke-width="1.3" stroke-linejoin="round"/><path d="M36 37 L20 26" stroke="url(#vr-bronce-f-hi)" stroke-width="1" opacity=".6"/></g><g transform="translate(60 60) scale(1) translate(-60 -60)"><path d="M60 14 L92 26 V60 C92 81 78 95 60 106 C42 95 28 81 28 60 V26 Z" transform="translate(0 3)" fill="#000" opacity=".45"/><path d="M60 14 L92 26 V60 C92 81 78 95 60 106 C42 95 28 81 28 60 V26 Z" fill="url(#vr-bronce-f-rim)" stroke="url(#vr-bronce-f-dark)" stroke-width="1.5" stroke-linejoin="round"/><path d="M60 14 L92 26 V60 C92 81 78 95 60 106 C42 95 28 81 28 60 V26 Z" transform="translate(60 60) scale(.8) translate(-60 -60)" fill="url(#vr-bronce-f-face)" stroke="url(#vr-bronce-f-hi)" stroke-width="1.2" stroke-linejoin="round"/><path d="M39 43 H52 L60 59 L68 43 H81 L60 82 Z" fill="url(#vr-bronce-f-metal)" stroke="url(#vr-bronce-f-dark)" stroke-width="1.2" stroke-linejoin="round"/><path d="M39 43 H52 L60 59 L57 59 Z" fill="#fff" opacity=".35"/><path d="M60 87 l3 3 l-3 3 l-3 -3 Z" fill="url(#vr-bronce-f-acc)"/><path d="M60 14 L92 26 V60 C92 81 78 95 60 106 C42 95 28 81 28 60 V26 Z" fill="url(#vr-bronce-f-sheen)" opacity=".5"/></g></svg>
