@@ -28,7 +28,8 @@ function rankFor(stat) {
 }
 function rankBadge(stat) {
   const r = rankFor(stat);
-  return `<span class="rank-badge" style="--rank:${r.color}"><span class="rank-gem"></span>${esc(stat && stat.rank ? stat.rank : r.name)}</span>`;
+  const icon = window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-badge-emblem') : '<span class="rank-gem"></span>';
+  return `<span class="rank-badge" style="--rank:${r.color}">${icon}${esc(stat && stat.rank ? stat.rank : r.name)}</span>`;
 }
 
 const fmtDate = (d, opts) => d ? new Date(d).toLocaleDateString('es-ES', opts || { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
@@ -134,12 +135,55 @@ function groupByDay(items, dateKey) {
 }
 
 const RANKS_STRIP = `<div class="ranks-strip">${VANTS_RANKS.map((r, i) => `
-  <div class="rank-tile" style="--rank:${r.color}">
-    <div class="rank-emblem"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L35 12 L35 28 L20 37 L5 28 L5 12 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 16 L20 26 L27 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${i >= 6 ? '<circle cx="20" cy="10" r="2" fill="currentColor"/>' : ''}</svg></div>
+  <div class="rank-tile${i >= 5 ? ' rank-tile-elite' : ''}${i === 7 ? ' rank-tile-apex' : ''}" style="--rank:${r.color}">
+    <span class="rank-tier">${window.VantsRanks ? VantsRanks.RANK_ART[r.key].tier : i + 1}</span>
+    <div class="rank-emblem">${window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-svg') : ''}</div>
     <div class="rank-name">${r.name}</div><div class="rank-min">${i === 7 ? 'Top global' : r.min + '+ MMR'}</div>
   </div>`).join('')}</div>`;
 
 const DISCORD_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>';
+
+
+// ============================================
+// PLANES (bloque compartido Inicio + Precios)
+// ============================================
+const PLAN_CARDS = [
+  { key: 'basic', name: 'BASIC', tier: 'T1', price: 9, emblem: 'plata', tag: 'Para empezar a competir', pitch: 'Tu pase a la escena: torneos abiertos, perfil Ranked y la comunidad VANTS.',
+    features: ['Inscripción a VANT Open', 'Perfil Ranked (Bronce–Oro)', 'Zona exclusiva BASIC', 'Rol BASIC en Discord', 'Soporte estándar'], cta: 'Empezar con BASIC' },
+  { key: 'pro', name: 'PRO', tier: 'T2', price: 19, emblem: 'diamante', tag: 'El favorito de los equipos', pitch: 'Ranked completo, Pro Series y scrims privadas para subir de nivel cada semana.', badge: 'MÁS POPULAR',
+    features: ['Todo lo de BASIC', 'VANT Pro Series', 'Sala privada y scrims', 'Prioridad en tryouts', 'Rol Operator en Discord', 'Soporte prioritario'], cta: 'Quiero PRO' },
+  { key: 'elite', name: 'ELITE', tier: 'T3', price: 39, emblem: 'escarlata', tag: 'Acceso total', pitch: 'Elite Invitational, canal Command y tu marca visible en todo el Ranked.', badge: 'ACCESO TOTAL',
+    features: ['Todo lo de PRO', 'VANT Elite Invitational', 'Canal Command con el staff', 'Badge Elite en tu perfil', 'Verificación prioritaria', 'Acceso anticipado a novedades'], cta: 'Ser ELITE' },
+];
+const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+function planCards() {
+  return `<div class="vp-grid">${PLAN_CARDS.map((p) => `
+    <article class="vp-card vp-${p.key}${p.key === 'pro' ? ' vp-featured' : ''}">
+      <div class="vp-glow" aria-hidden="true"></div>
+      ${p.badge ? `<div class="vp-badge">${p.badge}</div>` : ''}
+      <header class="vp-head">
+        <img class="vp-emblem" src="./assets/ranks/${p.emblem}.png" alt="" width="64" height="64" loading="lazy">
+        <div><div class="vp-tier">${p.tier} · VANT</div><h3 class="vp-name">${p.name}</h3><div class="vp-tag">${p.tag}</div></div>
+      </header>
+      <div class="vp-price"><span class="vp-cur">€</span><span class="vp-num">${p.price}</span><span class="vp-per">pago único<br>toda la temporada</span></div>
+      <p class="vp-pitch">${p.pitch}</p>
+      <ul class="vp-features">${p.features.map((f) => `<li>${CHECK_SVG}<span>${f}</span></li>`).join('')}</ul>
+      <a href="#/checkout/${p.key}" class="btn ${p.key === 'basic' ? 'btn-secondary' : p.key === 'pro' ? 'btn-primary' : 'btn-gold'} vp-btn">${p.cta}</a>
+      <div class="vp-foot">IVA incluido · Activación automática</div>
+    </article>`).join('')}</div>
+    <div class="vp-trust">
+      <span>${CHECK_SVG} Pago seguro con Stripe</span><span>${CHECK_SVG} Plan activo al instante en tu cuenta</span><span>${CHECK_SVG} Sin suscripción ni cargos ocultos</span><span>${CHECK_SVG} Ventajas sincronizadas con Discord</span>
+    </div>`;
+}
+
+function pageHero(num, kicker, title, lead, extra = '') {
+  return `<header class="page-hero">
+    <div class="page-hero-kicker"><span class="page-hero-num">${num}</span>${kicker}</div>
+    <h1>${title}</h1>
+    <p class="page-hero-lead">${lead}</p>
+    <div class="page-hero-meta">${liveTag()}${extra}</div>
+  </header>`;
+}
 
 // ============================================
 // PÁGINAS
@@ -151,14 +195,26 @@ const DOC_CONTENT = {
     isHome: true,
     content: `
       <section class="valorant-hero">
+        <div class="hero-media" aria-hidden="true"></div>
+        <div class="hero-grid" aria-hidden="true"></div>
         <div class="hero-badge"><span class="live-dot"></span> BETA ABIERTA · VALORANT · CS2 · LOL</div>
-        <h1>VANTCALL</h1>
-        <p class="hero-tagline">Ranked, torneos y eventos con datos reales. Inicia sesión con Discord o con tu correo y compite en la plataforma.</p>
+        <h1>VANT<span class="hero-accent">CALL</span></h1>
+        <p class="hero-tagline">La liga competitiva de la comunidad: ranked con MMR real, torneos con premios y un bot de Discord conectado a tu perfil. Entra con Google, Discord, Steam o correo.</p>
         <div class="hero-cta">
           <a href="#/login" class="btn btn-primary btn-lg" data-auth-cta>JUGAR GRATIS</a>
           <a href="#/torneos" class="btn btn-secondary btn-lg">VER TORNEOS</a>
         </div>
+        <div class="hero-meta" aria-label="Lo que incluye VANTS">
+          <span>Ranked con MMR</span><span>Torneos con premio</span><span>Bot de Discord en vivo</span><span>Zona exclusiva para miembros</span>
+        </div>
+        <span class="hero-scroll" aria-hidden="true"></span>
       </section>
+
+      <div class="marquee" aria-hidden="true">
+        <div class="marquee-track">
+          ${Array(2).fill(['VALORANT', 'Counter-Strike 2', 'League of Legends', 'Ranked VANTS', 'Torneos', 'Ligas', 'Scrims']).flat().map((t) => `<span class="marquee-item">${t}</span>`).join('')}
+        </div>
+      </div>
 
       <div class="stats-strip" data-async="home-stats">${skeleton(1)}</div>
 
@@ -183,101 +239,28 @@ const DOC_CONTENT = {
 
       <section class="valorant-banner">
         <div class="banner-content">
-          <h2>ÚNETE AL DISCORD</h2>
-          <p>Avisos oficiales, salas de VALORANT y CS2, postulaciones y el bot de VANTCALL sincronizado con la web.</p>
+          <h2>EL SERVIDOR DONDE PASA TODO</h2>
+          <p>Anuncios de torneos al instante, salas de voz para VALORANT y CS2, tryouts y el bot VANTS: usa /perfil, /ranking o /torneos y mira tus datos de la web en Discord.</p>
           <a href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg">ENTRAR AL SERVIDOR</a>
         </div>
       </section>
 
       <!-- Pricing Preview -->
       <section class="valorant-section valorant-pricing">
-        <div class="section-header">
-          <h2>PLANES</h2>
-        </div>
-        <div class="pricing-grid">
-          <div class="pricing-card pricing-tier-1">
-            <div class="pricing-tier-tag">T1 · DISPONIBLE</div>
-            <h3 class="pricing-tier-name">VANT BASIC</h3>
-            <p class="pricing-desc">Acceso comunitario, 1 entrada a torneos abiertos y perfil Ranked.</p>
-            <div class="pricing-price-line">
-              <span class="pricing-price-num">€9</span>
-              <span class="pricing-price-type">PAGO ÚNICO</span>
-            </div>
-            <ul class="pricing-features">
-              <li>Ticket BASIC de por vida en esta temporada</li>
-              <li>Inscripción a VANT Open</li>
-              <li>Perfil Ranked (Bronze-Gold)</li>
-              <li>Soporte estándar</li>
-            </ul>
-            <a href="#/checkout/basic" class="btn btn-secondary pricing-btn">COMPRAR</a>
-          </div>
-          <div class="pricing-card pricing-tier-2 pricing-featured">
-            <div class="pricing-badge">MÁS POPULAR</div>
-            <div class="pricing-tier-tag">T2 · DISPONIBLE</div>
-            <h3 class="pricing-tier-name">VANT PRO</h3>
-            <p class="pricing-desc">Ranked completo, Pro Series y prioridad de tryouts.</p>
-            <div class="pricing-price-line">
-              <span class="pricing-price-num">€19</span>
-              <span class="pricing-price-type">PAGO ÚNICO</span>
-            </div>
-            <ul class="pricing-features">
-              <li>Todo BASIC</li>
-              <li>VANT Pro Series</li>
-              <li>Sala privada / scrims</li>
-              <li>Prioridad en tryouts</li>
-              <li>Rol Operator equivalente</li>
-            </ul>
-            <a href="#/checkout/pro" class="btn btn-primary pricing-btn">COMPRAR</a>
-          </div>
-          <div class="pricing-card pricing-tier-3 pricing-elite">
-            <div class="pricing-badge pricing-badge-elite">ELITE</div>
-            <div class="pricing-tier-tag">T3 · DISPONIBLE</div>
-            <h3 class="pricing-tier-name">VANT ELITE</h3>
-            <p class="pricing-desc">Elite Invitational, cupo Command y marca visible en Ranked.</p>
-            <div class="pricing-price-line">
-              <span class="pricing-price-num">€39</span>
-              <span class="pricing-price-type">PAGO ÚNICO</span>
-            </div>
-            <ul class="pricing-features">
-              <li>Todo PRO</li>
-              <li>VANT Elite Invitational</li>
-              <li>Badge Elite en perfil</li>
-              <li>Canal Command</li>
-              <li>Revisión de verificación prioritaria</li>
-            </ul>
-            <a href="#/checkout/elite" class="btn btn-secondary pricing-btn">COMPRAR</a>
-          </div>
-        </div>
-        <p class="pricing-note" style="text-align:center; margin-top: var(--space-6);">El pago se confirma por webhook de Stripe, no por el redirect del navegador. PayPal aparece en Checkout si está activo en tu cuenta Stripe.</p>
+        <div class="section-header"><h2>ELIGE TU PLAN</h2></div>
+        <p class="section-lead">Un pago por temporada. Desbloquea torneos privados, scrims, roles en Discord y tu zona exclusiva.</p>
+        ${planCards()}
+        <p class="pricing-note" style="text-align:center; margin-top: var(--space-6);"><a href="#/precios" class="link-inline">Ver la comparativa completa</a></p>
       </section>
 
       <!-- Login Methods -->
       <section class="valorant-section">
-        <div class="section-header">
-          <h2>INICIO DE SESIÓN</h2>
-        </div>
-        <div class="login-methods-home">
-          <a href="#/login" class="login-method-card">
-            <div class="login-method-icon discord-icon">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-            </div>
-            <h3>Discord</h3>
-            <p>Acceso con cuenta de Discord vía OAuth 2.0</p>
-          </a>
-          <a href="#/registro" class="login-method-card">
-            <div class="login-method-icon google-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-            </div>
-            <h3>Correo</h3>
-            <p>Registro con correo y contraseña, verificación por email</p>
-          </a>
-          <a href="#/precios" class="login-method-card">
-            <div class="login-method-icon github-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-            </div>
-            <h3>Planes</h3>
-            <p>BASIC, PRO y ELITE se asignan a tu cuenta al pagar con Stripe</p>
-          </a>
+        <div class="section-header"><h2>ENTRA COMO QUIERAS</h2></div>
+        <div class="login-methods-home login-methods-4">
+          <a href="#/login" class="login-method-card"><div class="login-method-icon google-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.29 14.29A7.2 7.2 0 0 1 4.91 12c0-.8.14-1.57.38-2.29v-3.1H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.1z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.61l4.01 3.1C6.23 6.88 8.88 4.77 12 4.77z"/></svg></div><h3>Google</h3><p>Un clic con tu cuenta de Google</p></a>
+          <a href="#/login" class="login-method-card"><div class="login-method-icon discord-icon">${DISCORD_SVG}</div><h3>Discord</h3><p>Tu perfil queda conectado al bot VANTS</p></a>
+          <a href="#/login" class="login-method-card"><div class="login-method-icon steam-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.98 0C5.67 0 .5 4.86.02 11.04l6.43 2.66a3.38 3.38 0 0 1 1.92-.6l.19.01 2.86-4.15v-.06a4.52 4.52 0 1 1 4.52 4.52h-.1l-4.08 2.91v.16a3.39 3.39 0 0 1-6.72.63L.4 15.5A12 12 0 1 0 11.98 0z"/></svg></div><h3>Steam</h3><p>Ideal para CS2: cuenta verificada por Valve</p></a>
+          <a href="#/registro" class="login-method-card"><div class="login-method-icon mail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div><h3>Correo</h3><p>Registro clásico con verificación por email</p></a>
         </div>
       </section>
 
@@ -305,8 +288,7 @@ const DOC_CONTENT = {
   'calendario': {
     title: 'Calendario — VANTCALL Esports',
     content: `
-      <h1>Calendario</h1>
-      <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Calendario ${liveTag()}</p>
+      ${pageHero('02', 'Calendario', 'Lo que se juega <span class="hero-accent">esta semana</span>', 'Partidas de torneo, scrims, streams y eventos de la comunidad en un solo lugar. Confirma tu asistencia y recibe el aviso en Discord.', '<span class="page-hero-chip">Usa /calendario en Discord</span>')}
       <div class="calendar-filters" role="tablist">
         <button class="calendar-filter active" data-filter="all">TODO</button>
         <button class="calendar-filter" data-filter="match">PARTIDAS</button>
@@ -346,8 +328,7 @@ const DOC_CONTENT = {
   'ranked': {
     title: 'Ranked — VANTCALL Esports',
     content: `
-      <h1>Ranked</h1>
-      <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Ranked ${liveTag()}</p>
+      ${pageHero('03', 'Ranked VANTS', 'Sube de <span class="hero-accent">Hierro a Escarlata</span>', 'Cada partida mueve tu MMR. Ocho rangos, temporadas con recompensas y un leaderboard que se actualiza en tiempo real.', '<span class="page-hero-chip">Usa /ranking y /perfil en Discord</span>')}
       <div class="dash-grid" data-async="ranked-season">${skeleton(1)}</div>
       <h2>Rango VANTS</h2>
       ${RANKS_STRIP}
@@ -356,20 +337,17 @@ const DOC_CONTENT = {
       <h2>Reglas vigentes</h2>
       <div data-async="ranked-rules">${skeleton(2)}</div>
       <div class="bot-panel">
-        <h3>Comandos del bot en Discord</h3>
-        <div class="bot-commands">
-          <div class="bot-cmd"><code>/ranked entrar</code><span class="desc">Unirse a la cola</span></div>
-          <div class="bot-cmd"><code>/ranked placement</code><span class="desc">Partidas de calibración</span></div>
-          <div class="bot-cmd"><code>/ranked perfil</code><span class="desc">Perfil competitivo</span></div>
-          <div class="bot-cmd"><code>/ranked leaderboard</code><span class="desc">Clasificación</span></div>
-          <div class="bot-cmd"><code>/ranked resultado</code><span class="desc">Reportar resultado</span></div>
-          <div class="bot-cmd"><code>/ranked cancelar</code><span class="desc">Salir de la cola</span></div>
-        </div>
-        <p class="login-note">La cola ranked se gestiona desde el bot. Vincula Discord a tu cuenta para que tus partidas aparezcan aquí.</p>
+        <h3>Comandos del bot VANTS en Discord</h3>
+        <div class="bot-commands" data-async="bot-commands">${skeleton(2)}</div>
+        <p class="login-note">Los comandos se gestionan desde Supabase y responden con tus datos reales de la web. Entra con Discord o vincúlalo en Mi cuenta para usarlos.</p>
       </div>`,
     async load(main) {
       const DB = window.VantDB;
       const set = (k, h) => { const el = main.querySelector(`[data-async="${k}"]`); if (el) el.innerHTML = h; };
+      DB.client.from('bot_commands').select('name, description, min_plan, category').order('sort_order').then(({ data, error }) => {
+        if (error) return set('bot-commands', errorState(error));
+        set('bot-commands', (data || []).map((c) => `<div class="bot-cmd"><code>/${esc(c.name)}</code><span class="desc">${esc(c.description)}${c.min_plan !== 'free' ? ` · <b class="cmd-plan cmd-plan-${esc(c.min_plan)}">${esc(c.min_plan.toUpperCase())}</b>` : ''}</span></div>`).join('') || emptyState('Sin comandos', 'El staff aún no ha activado comandos.'));
+      });
       const RULE_LABEL = { placement_matches: 'Partidas de placement', mmr_per_win: 'MMR por victoria', mmr_per_loss: 'MMR por derrota', queue_timeout: 'Tiempo máximo en cola (s)', min_players_per_match: 'Jugadores mínimos por partida' };
       DB.rules().then((rs) => set('ranked-rules', rs.length ? `<div class="rules-grid">${rs.map((r) => `<div class="rule"><div class="rule-val">${esc(r.rule_value)}</div><div class="rule-key">${esc(RULE_LABEL[r.rule_key] || r.description || r.rule_key)}</div></div>`).join('')}</div>` : emptyState('Sin reglas', 'Las reglas se publicarán al abrir la temporada.'))).catch((e) => set('ranked-rules', errorState(e)));
       try {
@@ -388,8 +366,7 @@ const DOC_CONTENT = {
   'torneos': {
     title: 'Torneos — VANTCALL Esports',
     content: `
-      <h1>Torneos</h1>
-      <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Torneos ${liveTag()}</p>
+      ${pageHero('04', 'Torneos', 'Compite por <span class="hero-accent">premios reales</span>', 'VANT Open para todos, Pro Series para PRO y Elite Invitational para ELITE. Inscríbete en la web o con /torneo inscribir en Discord.', '<a class="page-hero-chip page-hero-chip-link" href="#/precios">Desbloquear torneos privados</a>')}
       <div data-async="tournaments">${skeleton(4)}</div>`,
     async load(main) {
       const box = main.querySelector('[data-async="tournaments"]');
@@ -408,8 +385,7 @@ const DOC_CONTENT = {
   'jugadores': {
     title: 'Jugadores — VANTCALL Esports',
     content: `
-      <h1>Jugadores</h1>
-      <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Jugadores ${liveTag()}</p>
+      ${pageHero('05', 'Jugadores', 'La comunidad <span class="hero-accent">VANTS</span>', 'Busca rivales, compañeros de equipo y fichajes. Cada perfil muestra rango, MMR, historial ranked y torneos jugados.', '<span class="page-hero-chip">Usa /perfil @jugador en Discord</span>')}
       <form class="search-bar" data-player-search role="search">
         <input class="login-form-input" name="q" type="search" placeholder="Buscar por nombre de jugador" aria-label="Buscar jugador" autocomplete="off">
         <button class="btn btn-primary" type="submit">Buscar</button>
@@ -440,71 +416,10 @@ const DOC_CONTENT = {
     title: 'Planes y Precios — VANTCALL Esports',
     group: 'Plataforma',
     content: `
-      <div class="pricing-header-block">
-        <div class="pricing-tag">TICKETS · MONETIZACIÓN</div>
-        <h1>VANT BASIC · PRO · ELITE</h1>
-        <p class="pricing-note">El pago se confirma por webhook de Stripe, no por el redirect del navegador. PayPal aparece en Checkout si está activo en tu cuenta Stripe.</p>
-        <p class="pricing-note-dim">Precios con IVA incluido. Necesitas iniciar sesión para comprar: el plan se asigna a tu cuenta automáticamente.</p>
-      </div>
+      ${pageHero('06', 'Planes VANT', 'Juega en <span class="hero-accent">otra liga</span>', 'Un único pago por temporada, sin suscripciones. Tu plan se activa al instante en tu cuenta, en la zona exclusiva y en tus roles de Discord.', '<span class="page-hero-chip">IVA incluido</span><span class="page-hero-chip">Pagos con Stripe</span>')}
+      ${planCards()}
 
-      <div class="pricing-grid">
-        <div class="pricing-card pricing-tier-1">
-          <div class="pricing-tier-tag">T1 · DISPONIBLE</div>
-          <h3 class="pricing-tier-name">VANT BASIC</h3>
-          <p class="pricing-desc">Acceso comunitario, 1 entrada a torneos abiertos y perfil Ranked.</p>
-          <div class="pricing-price-line">
-            <span class="pricing-price-num">€9</span>
-            <span class="pricing-price-type">PAGO ÚNICO</span>
-          </div>
-          <ul class="pricing-features">
-            <li>Ticket BASIC de por vida en esta temporada</li>
-            <li>Inscripción a VANT Open</li>
-            <li>Perfil Ranked (Bronze-Gold)</li>
-            <li>Soporte estándar</li>
-          </ul>
-          <a href="#/checkout/basic" class="btn btn-secondary pricing-btn">COMPRAR</a>
-        </div>
-
-        <div class="pricing-card pricing-tier-2 pricing-featured">
-          <div class="pricing-badge">MÁS POPULAR</div>
-          <div class="pricing-tier-tag">T2 · DISPONIBLE</div>
-          <h3 class="pricing-tier-name">VANT PRO</h3>
-          <p class="pricing-desc">Ranked completo, Pro Series y prioridad de tryouts.</p>
-          <div class="pricing-price-line">
-            <span class="pricing-price-num">€19</span>
-            <span class="pricing-price-type">PAGO ÚNICO</span>
-          </div>
-          <ul class="pricing-features">
-            <li>Todo BASIC</li>
-            <li>VANT Pro Series</li>
-            <li>Sala privada / scrims</li>
-            <li>Prioridad en tryouts</li>
-            <li>Rol Operator equivalente</li>
-          </ul>
-          <a href="#/checkout/pro" class="btn btn-primary pricing-btn">COMPRAR</a>
-        </div>
-
-        <div class="pricing-card pricing-tier-3 pricing-elite">
-          <div class="pricing-badge pricing-badge-elite">ELITE</div>
-          <div class="pricing-tier-tag">T3 · DISPONIBLE</div>
-          <h3 class="pricing-tier-name">VANT ELITE</h3>
-          <p class="pricing-desc">Elite Invitational, cupo Command y marca visible en Ranked.</p>
-          <div class="pricing-price-line">
-            <span class="pricing-price-num">€39</span>
-            <span class="pricing-price-type">PAGO ÚNICO</span>
-          </div>
-          <ul class="pricing-features">
-            <li>Todo PRO</li>
-            <li>VANT Elite Invitational</li>
-            <li>Badge Elite en perfil</li>
-            <li>Canal Command</li>
-            <li>Revisión de verificación prioritaria</li>
-          </ul>
-          <a href="#/checkout/elite" class="btn btn-secondary pricing-btn">COMPRAR</a>
-        </div>
-      </div>
-
-      <h2 style="margin-top: var(--space-20);">COMPARATIVA DE PLANES</h2>
+      <h2 class="vp-compare-title">Comparativa de planes</h2>
 
       <div class="pricing-comparison">
         <table>
@@ -527,10 +442,19 @@ const DOC_CONTENT = {
             <tr><td>Canal Command</td><td class="cross">—</td><td class="cross">—</td><td class="check">✓</td></tr>
             <tr><td>Soporte prioritario</td><td class="cross">—</td><td class="check">✓</td><td class="check">✓</td></tr>
             <tr><td>Verificación prioritaria</td><td class="cross">—</td><td class="cross">—</td><td class="check">✓</td></tr>
+            <tr><td>Zona exclusiva en la web</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+            <tr><td>Rol en Discord</td><td class="check">BASIC</td><td class="check">Operator</td><td class="check">Elite</td></tr>
           </tbody>
         </table>
       </div>
 
+      <div class="vp-faq">
+        <h2>Preguntas frecuentes</h2>
+        <details><summary>¿Es una suscripción?</summary><p>No. Pagas una vez y el plan dura toda la temporada en curso. No hay renovaciones automáticas.</p></details>
+        <details><summary>¿Cuándo se activa mi plan?</summary><p>En cuanto Stripe confirma el pago (normalmente en segundos). Lo verás en Mi cuenta, en la Zona exclusiva y con /zona en Discord.</p></details>
+        <details><summary>¿Puedo mejorar de BASIC a PRO o ELITE?</summary><p>Sí. Compra el plan superior cuando quieras y se aplicará el de mayor nivel.</p></details>
+        <details><summary>¿Qué métodos de pago aceptáis?</summary><p>Tarjeta, Apple Pay y Google Pay a través de Stripe. PayPal aparece si está activo en el checkout.</p></details>
+      </div>
       <p class="pricing-footer-note">Pagos procesados por Stripe. ¿Dudas con tu compra? Escribe a <a href="mailto:feispla@hotmail.com" class="pricing-link">feispla@hotmail.com</a></p>
     `
   },
