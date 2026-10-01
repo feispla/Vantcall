@@ -1,2 +1,4 @@
 .vercel
 screenshot-*.png
+__pycache__/
+*.py[cod]
