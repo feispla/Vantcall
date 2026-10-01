@@ -23,3 +23,11 @@ The connected VANTSBETA schema links Discord through `players.discord_user_id` a
 - Nuevo logo VANTS (`assets/brand/`), favicon, icono de Discord e imagen social.
 - 8 emblemas de rango premium (`assets/ranks/`) generados por `ranks.js` y usados en la web: escalera de rangos, insignias del leaderboard y perfiles.
 - Guía completa en [`assets/BRAND.md`](assets/BRAND.md).
+
+## Acceso: Google, Discord, Steam y correo (octubre 2026)
+
+- Web publicada: `https://vantsbeta.pplx.app/`.
+- **Google y Discord** usan Supabase OAuth (PKCE). En Supabase → Authentication → URL Configuration deben estar `https://vantsbeta.pplx.app` (Site URL) y `https://vantsbeta.pplx.app/**` (Redirect URLs).
+- **Google Cloud**: el cliente OAuth debe tener como *Authorized redirect URI* `https://qtetsgwwsvqzquxssudj.supabase.co/auth/v1/callback`.
+- **Steam** usa la Edge Function `steam-login` (OpenID 2.0). Devuelve `steam_token` (magic link de un solo uso que el cliente canjea con `verifyOtp`), `steam_linked=1` o `steam_error`. La lista de destinos permitidos incluye `https://vantsbeta.pplx.app/` y se puede ampliar con el secreto `STEAM_LOGIN_REDIRECTS`.
+- En **Mi cuenta** se puede vincular Google, Discord y Steam, y ver las ventajas del plan desde `plan_content`.

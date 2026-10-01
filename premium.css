@@ -639,3 +639,74 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .rank-tile-elite .rank-emblem, .rank-tile-apex::after { animation: none; }
 }
+
+/* ============================================
+   Acceso premium (Google · Discord · Steam) y cuenta
+   ============================================ */
+.login-page {
+  position: relative;
+  max-width: 480px;
+  border-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+  background:
+    radial-gradient(90% 45% at 50% 0%, rgba(255, 13, 46, .16), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 92%, #000) 0%, var(--color-surface-offset) 100%);
+}
+.login-page::before {
+  content: '';
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--space-5);
+  background: url('./assets/brand/vants-mark.svg') center / contain no-repeat;
+  filter: drop-shadow(0 8px 22px rgba(255, 13, 46, .35));
+}
+.login-page h1 { letter-spacing: -.01em; }
+.login-methods { gap: 10px; }
+.login-btn {
+  position: relative;
+  overflow: hidden;
+  justify-content: flex-start;
+  padding: 14px 18px;
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+.login-btn svg { width: 20px; height: 20px; flex: none; }
+.login-btn::after {
+  content: '→';
+  margin-left: auto;
+  opacity: .55;
+  transition: transform var(--transition-interactive), opacity var(--transition-interactive);
+}
+.login-btn:hover::after { transform: translateX(3px); opacity: 1; }
+.login-btn-google { background: #ffffff; border-color: #ffffff; color: #1f1f1f; }
+.login-btn-google:hover { background: #f1f3f4; border-color: #f1f3f4; }
+.login-btn-steam {
+  background: linear-gradient(135deg, #1b2838 0%, #171a21 100%);
+  border-color: #2a475e;
+  color: #c7d5e0;
+}
+.login-btn-steam svg { color: #66c0f4; }
+.login-btn-steam:hover { background: linear-gradient(135deg, #22344a 0%, #1b2838 100%); border-color: #66c0f4; color: #fff; }
+.login-btn-discord:hover { box-shadow: 0 10px 26px -12px rgba(88, 101, 242, .8); }
+
+/* Cuenta */
+.account-item { position: relative; }
+.account-item .btn-sm { margin-top: var(--space-2); }
+.steam-acc { display: inline-flex; align-items: center; gap: 8px; }
+.steam-acc img { width: 22px; height: 22px; border-radius: 3px; }
+.steam-acc a { color: inherit; text-decoration: none; border-bottom: 1px solid color-mix(in srgb, #66c0f4 50%, transparent); }
+.perk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6); }
+.perk-card {
+  position: relative;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  background: var(--premium-card);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+.perk-card h3 { font-family: var(--font-display); font-size: var(--text-sm); font-weight: 800; margin: 6px 0; }
+.perk-card p { font-size: 13px; color: var(--color-text-muted); margin-bottom: var(--space-2); }
+.perk-tier { font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; color: var(--color-primary); }
+.perk-elite { border-color: color-mix(in srgb, #f2b843 40%, var(--color-border)); }
+.perk-elite .perk-tier { color: #f2b843; }
