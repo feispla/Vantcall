@@ -28,7 +28,8 @@ function rankFor(stat) {
 }
 function rankBadge(stat) {
   const r = rankFor(stat);
-  return `<span class="rank-badge" style="--rank:${r.color}"><span class="rank-gem"></span>${esc(stat && stat.rank ? stat.rank : r.name)}</span>`;
+  const icon = window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-badge-emblem') : '<span class="rank-gem"></span>';
+  return `<span class="rank-badge" style="--rank:${r.color}">${icon}${esc(stat && stat.rank ? stat.rank : r.name)}</span>`;
 }
 
 const fmtDate = (d, opts) => d ? new Date(d).toLocaleDateString('es-ES', opts || { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
@@ -134,8 +135,9 @@ function groupByDay(items, dateKey) {
 }
 
 const RANKS_STRIP = `<div class="ranks-strip">${VANTS_RANKS.map((r, i) => `
-  <div class="rank-tile" style="--rank:${r.color}">
-    <div class="rank-emblem"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L35 12 L35 28 L20 37 L5 28 L5 12 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 16 L20 26 L27 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${i >= 6 ? '<circle cx="20" cy="10" r="2" fill="currentColor"/>' : ''}</svg></div>
+  <div class="rank-tile${i >= 5 ? ' rank-tile-elite' : ''}${i === 7 ? ' rank-tile-apex' : ''}" style="--rank:${r.color}">
+    <span class="rank-tier">${window.VantsRanks ? VantsRanks.RANK_ART[r.key].tier : i + 1}</span>
+    <div class="rank-emblem">${window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-svg') : ''}</div>
     <div class="rank-name">${r.name}</div><div class="rank-min">${i === 7 ? 'Top global' : r.min + '+ MMR'}</div>
   </div>`).join('')}</div>`;
 

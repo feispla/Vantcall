@@ -546,3 +546,96 @@ body::before {
 }
 [data-theme='light'] .pricing-elite .pricing-tier-tag { color: #b45309; }
 [data-theme='light'] .pricing-elite .pricing-features li::before { background: #b45309; }
+
+/* ============================================
+   Rangos premium y marca (v2)
+   ============================================ */
+.logo img, .footer-logo img { width: 30px; height: 30px; display: block; transition: transform var(--transition-slow), filter var(--transition-slow); }
+.logo:hover img { transform: rotate(-6deg) scale(1.06); filter: drop-shadow(0 0 10px rgba(255, 13, 46, .45)); }
+
+.ranks-strip { gap: var(--space-3); }
+.rank-tile {
+  --rank-glow: color-mix(in srgb, var(--rank) 40%, transparent);
+  overflow: hidden;
+  gap: 6px;
+  padding: var(--space-6) var(--space-2) var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--rank) 22%, var(--color-border));
+  border-bottom: 2px solid var(--rank);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  background:
+    radial-gradient(90% 60% at 50% 32%, color-mix(in srgb, var(--rank) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--rank) 6%, var(--color-surface)) 0%, var(--color-surface-offset) 100%);
+}
+.rank-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .14) 50%, transparent 65%);
+  transform: translateX(-130%);
+  transition: transform 900ms var(--ease-out-expo);
+}
+.rank-tile:hover::before { transform: translateX(130%); }
+.rank-tile:hover { box-shadow: 0 18px 40px -18px var(--rank-glow); }
+.rank-tier {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: color-mix(in srgb, var(--rank) 75%, var(--color-text-muted));
+}
+.rank-emblem { width: clamp(64px, 7vw, 96px); height: clamp(64px, 7vw, 96px); filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .45)); }
+.rank-emblem .rank-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.rank-tile:hover .rank-emblem { transform: translateY(-4px) scale(1.08); filter: drop-shadow(0 0 18px var(--rank-glow)) drop-shadow(0 8px 14px rgba(0, 0, 0, .45)); }
+.rank-name { font-size: var(--text-sm); letter-spacing: .04em; text-transform: uppercase; color: var(--color-text); }
+.rank-min { color: color-mix(in srgb, var(--rank) 45%, var(--color-text-muted)); }
+
+.rank-tile-elite .rank-emblem { animation: rank-float 5s ease-in-out infinite; }
+.rank-tile-apex {
+  border-color: color-mix(in srgb, #f2b843 45%, var(--rank));
+  background:
+    radial-gradient(90% 70% at 50% 30%, rgba(255, 59, 78, .28), transparent 70%),
+    radial-gradient(60% 40% at 50% 100%, rgba(242, 184, 67, .16), transparent 70%),
+    linear-gradient(180deg, #1d0a0e 0%, var(--color-surface-offset) 100%);
+}
+.rank-tile-apex .rank-name {
+  background: linear-gradient(180deg, #fff3c4, #f2b843 60%, #c27a1a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.rank-tile-apex::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background: conic-gradient(from var(--apex-angle, 0deg), transparent 0 70%, rgba(242, 184, 67, .55) 80%, transparent 90%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1px;
+  animation: apex-spin 6s linear infinite;
+}
+@property --apex-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes apex-spin { to { --apex-angle: 360deg; } }
+@keyframes rank-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+
+/* Insignia de rango en listas y perfiles */
+.rank-badge { padding: 3px 10px 3px 6px; gap: 6px; background: color-mix(in srgb, var(--rank) 10%, transparent); }
+.rank-badge-emblem { width: 18px; height: 18px; flex: none; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
+
+[data-theme='light'] .rank-tile { background: radial-gradient(90% 60% at 50% 32%, color-mix(in srgb, var(--rank) 16%, transparent), transparent 70%), #fff; }
+[data-theme='light'] .rank-tile-apex { background: radial-gradient(90% 70% at 50% 30%, rgba(255, 59, 78, .22), transparent 70%), #1d0a0e; }
+[data-theme='light'] .rank-tile-apex .rank-min { color: #f0b8bd; }
+
+@media (max-width: 900px) {
+  .ranks-strip { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 520px) {
+  .ranks-strip { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rank-tile-elite .rank-emblem, .rank-tile-apex::after { animation: none; }
+}

@@ -17,3 +17,9 @@ The `bot/` service provides guild-scoped `/vincular riot` and `/perfil` commands
 Run locally with `cd bot && pip install -r requirements.txt && cp .env.example .env` followed by `python main.py`. The service should use `python bot/main.py` from the repository root, or set `bot/` as the working directory and run `python main.py`.
 
 The connected VANTSBETA schema links Discord through `players.discord_user_id` and external accounts through `user_game_accounts.user_id` to `players.auth_user_id`. The required unique index is `user_game_accounts_user_game_unique` on `(user_id, game)`. Tournament counts prefer `tournament_participants` and fall back to `tournament_entries`; if neither optional table is available, the profile command returns zero tournaments.
+
+## Diseño premium y rangos
+
+- Nuevo logo VANTS (`assets/brand/`), favicon, icono de Discord e imagen social.
+- 8 emblemas de rango premium (`assets/ranks/`) generados por `ranks.js` y usados en la web: escalera de rangos, insignias del leaderboard y perfiles.
+- Guía completa en [`assets/BRAND.md`](assets/BRAND.md).
