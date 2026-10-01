@@ -42,6 +42,9 @@
     [/duplicate key|unique/i, 'Ya existe un registro igual.'],
     [/row-level security|permission denied/i, 'No tienes permiso para esta acción. Inicia sesión de nuevo.'],
     [/failed to fetch|network/i, 'Sin conexión con el servidor. Revisa tu conexión e inténtalo de nuevo.'],
+    [/unable to exchange external code|invalid_client/i, 'El proveedor rechazó el inicio de sesión (configuración OAuth). Prueba con otro método mientras el equipo lo revisa.'],
+    [/flow state|flow_state|code verifier|both auth code and code verifier/i, 'La sesión de inicio caducó. Pulsa de nuevo el botón para entrar.'],
+    [/state parameter missing|bad_oauth_state/i, 'El inicio de sesión se interrumpió. Vuelve a intentarlo desde este navegador.'],
   ];
   const humanError = (e) => {
     const msg = (e && (e.message || e.error_description || e.msg)) || String(e);
@@ -76,7 +79,7 @@
     if (!sb || !session) { me = null; return null; }
     const { data: pid } = await sb.rpc('current_player_id');
     const { data: player } = pid ? await sb.from('players').select(PLAYER_COLS).eq('id', pid).maybeSingle() : { data: null };
-    if (!player) { me = { player: null, discord: null, plan: 'free', profile: null, steam: null, perks: [] }; return me; }
+    if (!player) { me = { player: null, discord: null, plan: 'free', profile: null, steam: null, perks: [], adminRole: null }; return me; }
     const [disc, prof, ent, steam, perks] = await Promise.all([
       sb.from('player_discord_accounts').select('discord_id, discord_username, avatar_url').eq('player_id', player.id).maybeSingle(),
       sb.from('profiles').select('bio, visibility').eq('player_id', player.id).maybeSingle(),
@@ -89,7 +92,9 @@
       const t = String(e.tier || '').toLowerCase();
       if (PLAN_RANK[t] > PLAN_RANK[plan] && (!e.expires_at || new Date(e.expires_at) > new Date())) plan = t;
     }
-    me = { player, discord: disc.data || null, profile: prof.data || null, plan, steam: (steam && steam.data) || null, perks: (perks && perks.data) || [] };
+    let adminRole = null;
+    try { const r = await sb.rpc('web_admin_role'); adminRole = r.data || null; } catch (_) { adminRole = null; }
+    me = { player, discord: disc.data || null, profile: prof.data || null, plan, steam: (steam && steam.data) || null, perks: (perks && perks.data) || [], adminRole };
     return me;
   }
 
@@ -122,6 +127,9 @@
       link.setAttribute('href', '#/login');
       link.setAttribute('aria-label', 'Iniciar sesión');
     }
+    const adminLink = document.getElementById('admin-link');
+    if (adminLink) adminLink.hidden = !(session && me && me.adminRole);
+    document.querySelectorAll('[data-zona-link]').forEach((a) => a.classList.toggle('is-unlocked', Boolean(session && me && me.plan !== 'free')));
     document.querySelectorAll('[data-auth-cta]').forEach((a) => {
       a.setAttribute('href', session ? '#/cuenta' : '#/login');
       a.textContent = session ? 'MI CUENTA' : 'JUGAR GRATIS';
@@ -295,13 +303,15 @@ ${METHOD_BUTTONS('Registrarse')}
   if (typeof DOC_CONTENT === 'object') Object.assign(DOC_CONTENT, PAGES);
 
   // ---------- acciones ----------
-  const OAUTH_OPTS = { discord: { scopes: 'identify email' }, google: { queryParams: { prompt: 'select_account' } } };
+  const OAUTH_OPTS = { discord: { scopes: 'identify email', queryParams: { prompt: 'consent' } }, google: { queryParams: { prompt: 'select_account' } } };
   const topGo = (url) => { try { window.top.location.href = url; } catch (_) { window.location.href = url; } };
 
   async function oauth(provider, msgEl) {
     if (!sb) return showMsg(msgEl, 'No se pudo cargar el sistema de inicio de sesión. Recarga la página.', 'error');
     if (provider === 'steam') return steamLogin(msgEl);
     const prov = await loadProviders();
+    // Si quedó una sesión rota de un intento anterior, se limpia antes de volver a entrar
+    if (!session) { try { await sb.auth.signOut({ scope: 'local' }); } catch (_) { /* sin sesión */ } }
     if (!prov[provider]) return showMsg(msgEl, 'El inicio con ' + PROVIDER_NAME[provider] + ' no está activo. Usa otro método mientras tanto.', 'warning');
     const { data, error } = await sb.auth.signInWithOAuth({
       provider,
@@ -515,7 +525,8 @@ ${METHOD_BUTTONS('Registrarse')}
       <div class="account-head">
         <div class="player-avatar player-avatar-lg">${p && p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="">` : esc((displayName() || '?').slice(0, 2).toUpperCase())}</div>
         <div><h1>${esc(displayName())}</h1><div class="player-sub">${p ? '@' + esc(p.username) : ''}${!isPlaceholderEmail(u.email) && u.email ? (p ? ' · ' : '') + esc(u.email) : ''}</div>
-        ${p ? `<a class="link-inline" href="#/jugador/${encodeURIComponent(p.username)}">Ver perfil público</a>` : ''}</div>
+        ${p ? `<a class="link-inline" href="#/jugador/${encodeURIComponent(p.username)}">Ver perfil público</a>` : ''}
+        <div class="account-quick"><a class="btn btn-sm ${plan !== 'free' ? 'btn-gold' : 'btn-secondary'}" href="#/zona">${plan !== 'free' ? 'Entrar a mi zona ' + esc(plan.toUpperCase()) : 'Desbloquear zona exclusiva'}</a>${me && me.adminRole ? '<a class="btn btn-sm btn-primary" href="#/admin">Panel admin</a>' : ''}</div></div>
       </div>
       <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
       ${!p ? '<div class="auth-msg auth-msg-warning">Estamos creando tu perfil de jugador. Si no aparece en unos segundos, recarga la página.</div>' : ''}
@@ -636,7 +647,7 @@ ${METHOD_BUTTONS('Registrarse')}
         renderAccount(root);
         const m = root.querySelector('[data-auth-msg]');
         const lo = root.querySelector('[data-logout]');
-        if (lo) lo.addEventListener('click', async () => { await logEvent('cierre_sesion', {}); await sb.auth.signOut(); go('inicio'); });
+        if (lo) lo.addEventListener('click', () => logout());
         const ld = root.querySelector('[data-link-discord]');
         if (ld) ld.addEventListener('click', () => linkProvider('discord', m));
         const lg = root.querySelector('[data-link-google]');
@@ -658,12 +669,29 @@ ${METHOD_BUTTONS('Registrarse')}
     }
   }
 
-  window.VantAuth = { afterRender, bindTournament, rsvp, client: sb, get session() { return session; }, get me() { return me; } };
+  // Cierre de sesión robusto: aunque falle la red, se borra la sesión local para poder
+  // volver a entrar con Discord, Google o Steam sin quedarse bloqueado.
+  async function logout() {
+    await logEvent('cierre_sesion', {});
+    try { await sb.auth.signOut({ scope: 'local' }); } catch (_) { /* se limpia igualmente */ }
+    session = null; me = null; providers = null;
+    if (window.VantDB && window.VantDB.invalidate) window.VantDB.invalidate();
+    updateHeader();
+    go('inicio');
+  }
+
+  window.VantAuth = { logout, isAdmin: () => Boolean(me && me.adminRole), get adminRole() { return me && me.adminRole; }, plan: () => (me ? me.plan : 'free'), loadMe, afterRender, bindTournament, rsvp, client: sb, get session() { return session; }, get me() { return me; } };
 
   // ---------- arranque ----------
   async function boot() {
     if (!sb) { updateHeader(); return; }
     const params = new URLSearchParams(window.location.search);
+    // Supabase puede devolver el error en el hash (#error=...&error_description=...)
+    const rawHash = window.location.hash.replace(/^#\/?/, '');
+    if (/^(error|error_code|error_description)=/.test(rawHash)) {
+      new URLSearchParams(rawHash).forEach((v, k) => { if (!params.has(k)) params.set(k, v); });
+      if (!params.has('next')) params.set('next', 'login');
+    }
     const next = params.get('next');
     const authErr = params.get('error_description');
     const steamToken = params.get('steam_token');
@@ -685,7 +713,7 @@ ${METHOD_BUTTONS('Registrarse')}
 
     if (next || authErr || params.get('code') || steamToken || steamErr || steamLinked) {
       if (authErr) {
-        flags.set('vant_flash', JSON.stringify({ text: /expired|invalid/i.test(authErr) ? 'El enlace ha caducado o ya se usó. Solicita uno nuevo.' : humanError({ message: authErr }), kind: 'error' }));
+        flags.set('vant_flash', JSON.stringify({ text: /exchange external code|flow.state|state parameter/i.test(authErr) ? humanError({ message: authErr }) : /expired|invalid/i.test(authErr) ? 'El enlace ha caducado o ya se usó. Solicita uno nuevo.' : humanError({ message: authErr }), kind: 'error' }));
       } else if (!session && params.get('code') && !steamToken) {
         flags.set('vant_flash', JSON.stringify({ text: 'Correo confirmado. Inicia sesión con tu contraseña (el enlace se abrió en otro navegador).', kind: 'info' }));
       }
@@ -694,7 +722,7 @@ ${METHOD_BUTTONS('Registrarse')}
       if (typeof router === 'function') router();
     } else if (typeof router === 'function') {
       const cur = window.location.hash.replace('#/', '').split('?')[0];
-      if (['cuenta', 'login', 'registro', 'checkout/exito', 'nueva-contrasena'].includes(cur) || cur.startsWith('torneo/')) router();
+      if (['cuenta', 'login', 'registro', 'checkout/exito', 'nueva-contrasena', 'admin', 'zona'].includes(cur) || cur.startsWith('torneo/')) router();
     }
 
     sb.auth.onAuthStateChange(async (event, s) => {
@@ -705,7 +733,7 @@ ${METHOD_BUTTONS('Registrarse')}
         if (s) { await loadMe(); logEvent('inicio_sesion', { proveedor: (s.user.app_metadata || {}).provider || 'email' }); } else me = null;
         updateHeader();
         const cur = window.location.hash.replace('#/', '');
-        if (cur === 'cuenta' && typeof router === 'function') router();
+        if (['cuenta', 'admin', 'zona'].includes(cur) && typeof router === 'function') router();
       }
     });
   }
