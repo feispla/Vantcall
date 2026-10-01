@@ -606,3 +606,115 @@ body::before {
   .zone-item { flex-direction: column; align-items: flex-start; }
   .zone-status { flex-direction: column; align-items: flex-start; }
 }
+
+/* ---------- Rangos VANTS: escalera premium ---------- */
+.ranks-ladder {
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-8); counter-reset: rank;
+}
+.ranks-ladder .rank-tile {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: var(--space-6) var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border); border-bottom: 0;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  text-align: center;
+}
+.ranks-ladder .rank-tile::before {
+  content: ''; position: absolute; inset: auto 0 0 0; height: 2px; z-index: -1;
+  background: linear-gradient(90deg, transparent, var(--rank), transparent);
+}
+.ranks-ladder .rank-tile::after {
+  content: ''; position: absolute; inset: -40% -20% auto; height: 90%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--rank) 26%, transparent), transparent);
+  opacity: .55; transition: opacity 450ms var(--ease-out-expo);
+}
+.ranks-ladder .rank-tile:hover::after { opacity: 1; }
+.rank-tier-num { position: absolute; top: 8px; left: 10px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; color: var(--color-text-faint); }
+.ranks-ladder .rank-emblem { width: 72px; height: 72px; color: var(--rank); filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--rank) 30%, transparent)); }
+.ranks-ladder .rank-emblem svg { width: 72px; height: 72px; overflow: visible; }
+.ranks-ladder .rank-name { font-family: var(--font-display); font-weight: 900; font-size: var(--text-base); letter-spacing: .04em; text-transform: uppercase; color: var(--color-text); }
+.ranks-ladder .rank-min { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; color: var(--color-text-muted); }
+.rank-bar { width: 70%; height: 3px; margin-top: 4px; background: color-mix(in srgb, var(--color-text) 8%, transparent); overflow: hidden; }
+.rank-bar span { display: block; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--rank) 40%, transparent), var(--rank)); }
+.ranks-ladder .is-high .rank-name { color: color-mix(in srgb, var(--rank) 70%, var(--color-text)); }
+.ranks-ladder .is-apex { border-color: color-mix(in srgb, var(--rank) 55%, var(--color-border)); }
+.ranks-ladder .is-apex .rank-name {
+  background: linear-gradient(100deg, #ffd0a1, var(--elite-b) 35%, var(--rank) 70%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.ranks-ladder .is-apex .rank-emblem { animation: apexPulse 3.2s ease-in-out infinite; }
+@keyframes apexPulse { 50% { filter: drop-shadow(0 0 18px color-mix(in srgb, var(--rank) 65%, transparent)); transform: translateY(-2px); } }
+[data-theme="light"] .ranks-ladder .rank-tile { background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--rank) 14%, transparent), transparent 70%), var(--color-surface); }
+@media (max-width: 1100px) { .ranks-ladder { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .ranks-ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Insignia de rango con emblema */
+.rank-badge { gap: 6px; padding: 3px 10px 3px 6px; background: color-mix(in srgb, var(--rank) 10%, transparent); }
+.rank-badge .rank-emblem-svg { width: 18px; height: 18px; flex-shrink: 0; overflow: visible; }
+
+/* ---------- Calendario mensual ---------- */
+.cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); margin: var(--space-4) 0 var(--space-5); }
+.cal-nav { display: flex; align-items: center; gap: var(--space-2); }
+.cal-month { margin: 0 var(--space-2); min-width: 11ch; font-family: var(--font-display); font-weight: 900; font-size: var(--text-xl); border: 0; padding: 0; text-align: center; }
+.cal-nav-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--color-border); background: var(--premium-card); color: var(--color-text); cursor: pointer; transition: border-color var(--transition-interactive), color var(--transition-interactive); }
+.cal-nav-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.cal-nav-btn svg { width: 18px; height: 18px; }
+.calendar-filter { display: inline-flex; align-items: center; gap: 6px; }
+.cal-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.cal-dot-match { background: var(--color-primary); }
+.cal-dot-event { background: #5865f2; }
+.cal-dot-tournament { background: var(--elite-b); }
+.cal-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+.cal-grid-wrap { border: 1px solid var(--color-border); background: var(--premium-card); padding: var(--space-3); }
+.cal-weekdays, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-weekdays span { padding: var(--space-2) 0; text-align: center; font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-text-faint); }
+.cal-cell {
+  position: relative; min-height: 86px; padding: 6px; display: flex; flex-direction: column; gap: 4px; text-align: left;
+  border: 1px solid transparent; background: color-mix(in srgb, var(--color-bg) 55%, transparent); color: var(--color-text);
+  font: inherit; cursor: default; transition: border-color var(--transition-interactive), background var(--transition-interactive);
+}
+.cal-cell.is-pad { background: transparent; }
+.cal-cell.is-past { opacity: .55; }
+.cal-cell.has-items { cursor: pointer; border-color: var(--color-border); }
+.cal-cell.has-items:hover { border-color: var(--color-border-strong); background: color-mix(in srgb, var(--color-primary) 6%, var(--color-bg)); }
+.cal-cell.is-selected { border-color: var(--color-primary); box-shadow: inset 0 0 0 1px var(--color-primary); }
+.cal-num { font-family: var(--font-display); font-weight: 800; font-size: var(--text-sm); }
+.cal-cell.is-today .cal-num { display: inline-grid; place-items: center; width: 24px; height: 24px; background: var(--color-primary); color: #fff; }
+.cal-items { display: grid; gap: 2px; min-width: 0; }
+.cal-chip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 5px; font-size: 10px; font-weight: 600; border-left: 2px solid; background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+.cal-chip-match { border-color: var(--color-primary); }
+.cal-chip-event { border-color: #5865f2; }
+.cal-chip-tournament { border-color: var(--elite-b); }
+.cal-more { font-size: 10px; color: var(--color-text-muted); }
+.cal-dots { display: none; gap: 3px; margin-top: auto; }
+.cal-agenda { min-width: 0; }
+.cal-agenda-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+.cal-agenda-head h3 { margin: 0; font-family: var(--font-display); font-size: var(--text-lg); }
+.match-day-badge.is-past { background: transparent; border: 1px solid var(--color-border); color: var(--color-text-muted); }
+.cal-tz { margin-top: var(--space-4); }
+@media (max-width: 1000px) { .cal-layout { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .cal-cell { min-height: 48px; padding: 4px; align-items: center; }
+  .cal-items { display: none; }
+  .cal-dots { display: flex; }
+  .cal-month { font-size: var(--text-lg); min-width: 9ch; }
+  .cal-toolbar { flex-direction: column; align-items: stretch; }
+  .cal-nav { justify-content: space-between; }
+  .calendar-filters { overflow-x: auto; }
+}
+
+/* Tarjetas de partida y evento en móvil: nombres visibles y acciones accesibles */
+@media (max-width: 768px) {
+  .match-card { grid-template-columns: 52px minmax(0, 1fr) auto minmax(0, 1fr); gap: var(--space-2); padding: var(--space-3); }
+  .match-team { min-width: 0; gap: 6px; }
+  .match-team-name { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); }
+  .match-card.event-card, .match-card.cal-tournament { grid-template-columns: 52px minmax(0, 1fr); }
+  .match-card.event-card .match-format, .match-card.cal-tournament .match-format { display: flex; grid-column: 2; flex-wrap: wrap; justify-content: flex-start; gap: var(--space-2); }
+}
+
+/* Inicio: cuatro métodos de acceso */
+.login-methods-home { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.login-method-icon.steam-icon { color: #66c0f4; }
+@media (max-width: 1000px) { .login-methods-home { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .login-methods-home { grid-template-columns: 1fr; } }
