@@ -1,44 +1,336 @@
 
-## Integraciones reales (septiembre 2026)
+# VANTS - Plataforma de Esports Premium
 
-- **Auth**: Supabase Auth (proyecto `qtetsgwwsvqzquxssudj`, URL `https://qtetsgwwsvqzquxssudj.supabase.co`) con correo + contraseña (verificación por email, recuperación) y Discord OAuth. Código en `auth.js` (flujo PKCE).
-- **Pagos**: Stripe live, Payment Links BASIC 9 €, PRO 19 €, ELITE 39 € (IVA incluido). El checkout envía `client_reference_id` = id del usuario.
-- **Webhook de pagos**: `supabase/functions/stripe-webhook` verifica la firma de Stripe, inserta en `purchases` y un trigger sube el plan del perfil.
-- **Vinculación de Steam**: `supabase/functions/link-steam-start`, `link-steam-callback` y `unlink-steam` implementan el flujo OpenID 2.0 con Valve. Guardan en `user_game_accounts` con `verified = true`. El state temporal vive en `steam_link_state` (10 min, un solo uso). La `STEAM_WEB_API_KEY` nunca sale del backend.
-- **Bot de Discord vantcall**: repositorio [`feispla/VantsportsOficial`](https://github.com/feispla/VantsportsOficial), carpeta `bot/`. El servicio se puede desplegar en Railway/Render. Comandos `/vincular riot` y `/perfil` conectados a `players`, `user_game_accounts` y las tablas de torneos disponibles del mismo proyecto Supabase. La `SUPABASE_SERVICE_ROLE_KEY` vive solo en el servicio backend, nunca en el cliente desktop ni en el repo.
-- **ValoTracker**: bot externo invitado al servidor Discord de VANTS para stats de ranked de Valorant. Convive con vantcall; no hay API entre ambos, el usuario los usa en paralelo.
-- **Eventos web**: todo se registra en `public.web_events`; un bot de backend los publica en Discord `#web-eventos`.
-- **Secretos**: ninguna clave secreta está en los repositorios. Los secretos (`STRIPE_WEBHOOK_SECRET`, `STEAM_WEB_API_KEY`, `DISCORD_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`) viven en Supabase Vault y en variables de entorno del servicio.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
+[![Discord](https://img.shields.io/badge/Discord-Bot-5865F2?logo=discord)](https://discord.com)
 
-## vantcall Discord bot
+Plataforma competitiva de esports con autenticación multi-proveedor, pagos con Stripe, integración con Steam/Valorant/Riot, torneos automatizados y bot de Discord.
 
-The `bot/` service provides guild-scoped `/vincular riot` and `/perfil` commands. It uses the Supabase `service_role` key only on the server, never in the desktop client.
+**Demo:** [https://vantsbetaa.pplx.app/](https://vantsbetaa.pplx.app/)
 
-Run locally with `cd bot && pip install -r requirements.txt && cp .env.example .env` followed by `python main.py`. The service should use `python bot/main.py` from the repository root, or set `bot/` as the working directory and run `python main.py`.
+---
 
-The connected VANTSBETA schema links Discord through `players.discord_user_id` and external accounts through `user_game_accounts.user_id` to `players.auth_user_id`. The required unique index is `user_game_accounts_user_game_unique` on `(user_id, game)`. Tournament counts prefer `tournament_participants` and fall back to `tournament_entries`; if neither optional table is available, the profile command returns zero tournaments.
+## 🚀 Características
 
-## Diseño premium y rangos
+### Autenticación & Acceso
+- ✅ **Supabase Auth** con correo + contraseña (verificación por email, recuperación)
+- ✅ **OAuth:** Google, Discord (PKCE flow)
+- ✅ **Steam:** OpenID 2.0 vía Edge Functions
+- ✅ **Riot Games:** vinculación de cuentas para Valorant
 
-- Nuevo logo VANTS (`assets/brand/`), favicon, icono de Discord e imagen social.
-- 8 emblemas de rango premium (`assets/ranks/`) generados por `ranks.js` y usados en la web: escalera de rangos, insignias del leaderboard y perfiles.
-- Guía completa en [`assets/BRAND.md`](assets/BRAND.md).
+### Pagos & Suscripciones
+- 💳 **Stripe live** - Payment Links
+  - BASIC: 9 € (IVA incluido)
+  - PRO: 19 € (IVA incluido)
+  - ELITE: 39 € (IVA incluido)
+- 🔔 Webhook automático → actualización de planes en tiempo real
+- 🎯 Zona VIP con contenido exclusivo por plan
 
-## Acceso: Google, Discord, Steam y correo (octubre 2026)
+### Torneos & Competición
+- 🏆 Creación y gestión de torneos multi-juego
+- 📊 Tablas de clasificación (leaderboards)
+- 🎮 12 juegos soportados: LoL, MLBB, FC26, Fortnite, Clash Royale, Rocket League, Valorant, CS2, COD Warzone, Apex Legends, Overwatch 2, Rainbow Six Siege
+- 📝 Sistema de inscripción automática
+- 🔔 Notificaciones en Discord
 
-- Web publicada: `https://vantsbetaa.pplx.app/`.
-- **Google y Discord** usan Supabase OAuth (PKCE). En Supabase → Authentication → URL Configuration deben estar `https://vantsbetaa.pplx.app` (Site URL) y `https://vantsbetaa.pplx.app/**` (Redirect URLs).
-- **Google Cloud**: el cliente OAuth debe tener como *Authorized redirect URI* `https://qtetsgwwsvqzquxssudj.supabase.co/auth/v1/callback`.
-- **Steam** usa la Edge Function `steam-login` (OpenID 2.0). Devuelve `steam_token` (magic link de un solo uso que el cliente canjea con `verifyOtp`), `steam_linked=1` o `steam_error`. La lista de destinos permitidos incluye `https://vantsbetaa.pplx.app/` y se puede ampliar con el secreto `STEAM_LOGIN_REDIRECTS`.
-- En **Mi cuenta** se puede vincular Google, Discord y Steam, y ver las ventajas del plan desde `plan_content`.
+### Integraciones Externas
+- 🎮 **Steam:** vinculación de cuentas (OpenID 2.0)
+- 🔫 **Valorant:** stats ranked vía ValoTracker bot
+- 💬 **Discord:** bot `vantcall` con comandos `/vincular riot` y `/perfil`
+- 🌐 **Riot Games:** API para datos de jugadores
 
-## Panel admin, Zona VIP y bot de Discord (oct 2026)
+### Panel de Administración
+- 👑 Dashboard exclusivo para admins (`public.web_admins`)
+- 📈 Métricas: jugadores, torneos, eventos, ranked, soporte
+- 🤖 Gestión del bot Discord (activar/desactivar comandos, sync, announce)
+- 💎 Configuración de planes y contenido VIP
 
-- **Panel admin** en `#/admin` (`admin.js`). Solo lo ven las cuentas de `public.web_admins` (propietaria: feisplaa@gmail.com). RLS impide cualquier lectura/escritura a quien no sea admin. Pestañas: Resumen, Jugadores (planes y verificación), Torneos, Eventos, Ranked (temporadas y reglas), Zona y planes (`plan_content`), Soporte, Bot Discord y Actividad.
-- **Zona VIP** en `#/zona` (`zona.js`): contenido exclusivo según plan (BASIC/PRO/ELITE). Gratis o sin sesión ve la vista bloqueada (`plan_content_teaser`).
-- **Bot de Discord por HTTP Interactions** (Edge Functions, sin servidor propio):
-  - `discord-commands`: responde los slash commands. El catálogo vive en `public.bot_commands` (activar/desactivar, solo staff, plan mínimo y comandos personalizados desde el panel).
-  - `discord-admin`: acciones del panel (`status`, `connect`, `sync`, `announce`). `connect` guarda el token en Supabase Vault, apunta el Interactions Endpoint a `.../functions/v1/discord-commands` y registra los comandos en el servidor.
-  - `discord-notify`: publica torneos, eventos y temporadas en los canales de `discord_channels`.
-  - El bot Python de `bot/` (gateway) es la versión antigua; si se usa a la vez que el endpoint HTTP, Discord solo envía las interacciones al endpoint.
-- **Arreglo del login con Discord**: el error `invalid_client` venía del Client Secret de Discord guardado en Supabase. Hay que regenerarlo en Discord Developer Portal → OAuth2 → Reset Secret y pegarlo en Supabase → Authentication → Providers → Discord (Client ID `1552959749891297320`). Redirect obligatoria en Discord: `https://qtetsgwwsvqzquxssudj.supabase.co/auth/v1/callback`. La web ahora cierra sesión solo en local, limpia el estado PKCE antes de cada OAuth y pide `prompt=consent` a Discord para que se pueda volver a entrar tras cerrar sesión.
+---
+
+## 🏗️ Arquitectura
+VantsportsOficial/
+├── app/ # Frontend (Next.js/React)
+│ ├── admin.js # Panel de administración
+│ ├── zona.js # Zona VIP
+│ └── auth.js # Flujo OAuth PKCE
+├── bot/ # Bot de Discord (Python)
+│ ├── main.py # Gateway & comandos slash
+│ ├── cogs/ # Módulos del bot
+│ └── requirements.txt # Dependencias Python
+├── supabase/
+│ ├── functions/ # Edge Functions
+│ │ ├── stripe-webhook/
+│ │ ├── link-steam-start/
+│ │ ├── link-steam-callback/
+│ │ ├── unlink-steam/
+│ │ ├── discord-commands/
+│ │ ├── discord-admin/
+│ │ └── discord-notify/
+│ ├── schema.sql # Estructura de BD
+│ ├── seed.sql # Datos iniciales
+│ └── migrations/ # Migraciones
+├── assets/
+│ ├── brand/ # Logo, favicon, iconos
+│ └── ranks/ # 8 emblemas de rango premium
+└── docs/
+└── BRAND.md # Guía de marca
+
+
+---
+
+## 🗄️ Base de Datos (Supabase)
+
+### Tablas Principales
+
+| Tabla | Descripción |
+|-------|-------------|
+| `players` | Perfiles de jugadores (discord_user_id, auth_user_id, plan, verificación) |
+| `user_game_accounts` | Cuentas externas vinculadas (Steam, Riot, etc.) con `verified = true` |
+| `purchases` | Historial de compras Stripe (client_reference_id = user_id) |
+| `tournament_participants` / `tournament_entries` | Inscripciones a torneos |
+| `web_events` | Eventos de la web (publicados en Discord #web-eventos) |
+| `web_admins` | Lista de administradores (RLS protegido) |
+| `plan_content` | Contenido exclusivo por plan (BASIC/PRO/ELITE) |
+| `bot_commands` | Catálogo de comandos del bot (activar/desactivar, plan mínimo) |
+| `discord_channels` | Canales para notificaciones de torneos/eventos |
+
+### Seguridad (RLS)
+
+- 🔒 `web_admins`: solo lectura/escritura para admins
+- 🔒 `purchases`: solo el usuario propietario
+- 🔒 `user_game_accounts`: índice único `(user_id, game)`
+- 🔒 Secretos en **Supabase Vault** (nunca en el repo)
+
+---
+
+## 🤖 Bot de Discord (`vantcall`)
+
+### Comandos Disponibles
+
+| Comando | Descripción |
+|---------|-------------|
+| `/vincular riot` | Vincula cuenta de Riot Games al perfil |
+| `/perfil` | Muestra stats del jugador (torneos, rango, cuentas vinculadas) |
+| `/status` | Estado del bot (solo staff) |
+| `/connect` | Conecta el servidor con VANTS (guarda token en Vault) |
+| `/sync` | Sincroniza datos de torneos y jugadores |
+| `/announce` | Publica anuncios en canales configurados |
+
+### Implementación
+
+- **Gateway (Python):** `bot/main.py` con `discord.py`
+- **HTTP Interactions (Edge Functions):** `discord-commands`, `discord-admin`, `discord-notify`
+- **Despliegue:** Railway/Render con variables de entorno:
+  ```bash
+  DISCORD_TOKEN=<tu_token>
+  SUPABASE_URL=https://qtetsgwwsvqzquxssudj.supabase.co
+  SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+  ```
+
+> ⚠️ **Nota:** Si usas el endpoint HTTP (Edge Functions), Discord solo envía interacciones al endpoint, no al gateway Python.
+
+---
+
+## 🔐 Seguridad & Secretos
+
+### Variables de Entorno (Nunca en el repo)
+
+| Variable | Ubicación | Uso |
+|----------|-----------|-----|
+| `STRIPE_WEBHOOK_SECRET` | Supabase Vault / .env | Verificar firma de webhooks |
+| `STEAM_WEB_API_KEY` | Supabase Vault | API de Steam (OpenID) |
+| `DISCORD_TOKEN` | Supabase Vault / .env | Bot de Discord |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Vault / .env | Operaciones admin en BD |
+| `STEAM_LOGIN_REDIRECTS` | Supabase Vault | Lista de destinos permitidos |
+
+### OAuth Configuration
+
+- **Site URL:** `https://vantsbetaa.pplx.app`
+- **Redirect URLs:** `https://vantsbetaa.pplx.app/**`
+- **Discord Client ID:** `1552959749891297320`
+- **Discord Redirect:** `https://qtetsgwwsvqzquxssudj.supabase.co/auth/v1/callback`
+- **Google Cloud Redirect:** `https://qtetsgwwsvqzquxssudj.supabase.co/auth/v1/callback`
+
+---
+
+## 🛠️ Instalación & Desarrollo
+
+### Prerrequisitos
+
+- Node.js 18+
+- Python 3.10+
+- Supabase CLI (opcional)
+
+### Frontend
+
+```bash
+# Instalar dependencias
+npm install
+
+# Variables de entorno (.env.local)
+NEXT_PUBLIC_SUPABASE_URL=[https://qtetsgwwsvqzquxssudj.supabase.co](https://qtetsgwwsvqzquxssudj.supabase.co)
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon_key>
+
+# Desarrollo
+npm run dev
+
+# Producción
+npm run build
+npm run start
+```
+
+### Bot de Discord
+
+```bash
+cd bot
+
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Copiar y configurar .env
+cp .env.example .env
+# Editar: DISCORD_TOKEN, SUPABASE_SERVICE_ROLE_KEY
+
+# Ejecutar
+python main.py
+# O desde la raíz: python bot/main.py
+```
+
+### Edge Functions
+
+```bash
+# Instalar Supabase CLI
+npm install -g supabase
+
+# Login
+supabase login
+
+# Link al proyecto
+supabase link --project-ref qtetsgwwsvqzquxssudj
+
+# Deploy de funciones
+supabase functions deploy stripe-webhook
+supabase functions deploy link-steam-start
+supabase functions deploy discord-commands
+# ... etc
+```
+
+---
+
+## 📊 Flujo de Pagos (Stripe)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Web
+    participant Stripe
+    participant Supabase
+    participant Webhook
+
+    User->>Web: Click en "Suscribirse"
+    Web->>Stripe: Payment Link (BASIC/PRO/ELITE)
+    User->>Stripe: Completa el pago
+    Stripe->>Webhook: POST /stripe-webhook
+    Webhook->>Webhook: Verificar firma
+    Webhook->>Supabase: INSERT purchases
+    Supabase->>Supabase: Trigger → actualizar plan
+    Supabase->>Web: plan_content actualizado
+    Web->>User: Acceso a Zona VIP
+```
+
+---
+
+## 🎨 Branding & Diseño
+
+- **Logo:** `assets/brand/` (favicon, icono Discord, imagen social)
+- **Rangos:** 8 emblemas premium en `assets/ranks/` (generados por `ranks.js`)
+- **Guía completa:** [`assets/BRAND.md`](assets/BRAND.md)
+
+---
+
+## 📝 Scripts SQL
+
+### Esquema Base
+
+```bash
+supabase/db/schema.sql      # Tablas principales
+supabase/db/seed.sql        # Datos iniciales
+supabase/db/admin.sql       # Configurar administradores
+supabase/db/owner.sql       # Configurar propietario
+```
+
+### Ejecutar Migraciones
+
+```bash
+# Conectar al proyecto
+psql -h db.qtetsgwwsvqzquxssudj.supabase.co -U postgres -d postgres
+
+# Ejecutar scripts
+\i schema.sql
+\i seed.sql
+\i admin.sql
+\i owner.sql
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Error `invalid_client` en Discord OAuth
+
+1. Ve a [Discord Developer Portal](https://discord.com/developers/applications)
+2. OAuth2 → **Reset Secret**
+3. Copia el nuevo Client Secret
+4. Supabase → Authentication → Providers → Discord → pega el nuevo secret
+5. Redirect obligatoria: `https://qtetsgwwsvqzquxssudj.supabase.co/auth/v1/callback`
+
+### Bot no responde a comandos
+
+- Verifica que `DISCORD_TOKEN` esté correcto en .env
+- Revisa que el bot tenga permisos en el servidor
+- Si usas Edge Functions, asegúrate de que el endpoint esté activo
+
+### Webhook de Stripe no funciona
+
+- Verifica `STRIPE_WEBHOOK_SECRET` en Supabase Vault
+- Prueba el endpoint con [Stripe CLI](https://stripe.com/docs/stripe-cli):
+  ```bash
+  stripe listen --forward-to https://qtetsgwwsvqzquxssudj.supabase.co/functions/v1/stripe-webhook
+  ```
+
+---
+
+## 📄 Licencia
+
+MIT License - ver [LICENSE](LICENSE) para más detalles.
+
+---
+
+## 🤝 Contribuir
+
+1. Fork el repo
+2. Crea una rama (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit (`git commit -m 'Añade nueva funcionalidad'`)
+4. Push (`git push origin feature/nueva-funcionalidad`)
+5. Pull Request
+
+---
+
+## 📞 Contacto
+
+- **Web:** [https://vantsbetaa.pplx.app/](https://vantsbetaa.pplx.app/)
+- **Discord:** Únete al servidor oficial
+- **Email:** feisplaa@gmail.com
+
+---
+
+<div align="center">
+
+**Hecho con ❤️ por VANTS Team**
+
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
+[![Discord](https://img.shields.io/badge/Discord-Server-5865F2?logo=discord)](https://discord.com)
+[![Stripe](https://img.shields.io/badge/Stripe-Payments-008CDD?logo=stripe)](https://stripe.com)
+
+</div>
