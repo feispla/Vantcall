@@ -4,174 +4,172 @@
 -- ============================================================
 
 -- JUEGOS
-create table if not exists games (
-  slug text primary key,                -- 'valorant' | 'cs2' | 'lol'
-  name text not null,
-  short text not null,
-  dot_class text not null default '',
-  active boolean not null default true
+CREATE TABLE IF NOT EXISTS games (
+  slug TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  short TEXT NOT NULL,
+  dot_class TEXT NOT NULL DEFAULT '',
+  active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-insert into games (slug, name, short, dot_class) values
+INSERT INTO games (slug, name, short, dot_class) VALUES
   ('valorant', 'VALORANT', 'VAL', 'dot--valorant'),
   ('cs2', 'Counter-Strike 2', 'CS2', 'dot--cs2'),
   ('lol', 'League of Legends', 'LoL', 'dot--lol')
-on conflict (slug) do nothing;
+ON CONFLICT (slug) DO NOTHING;
 
 -- REGIONES
-create table if not exists regions (
-  slug text primary key,
-  name text not null
+CREATE TABLE IF NOT EXISTS regions (
+  slug TEXT PRIMARY KEY,
+  name TEXT NOT NULL
 );
 
-insert into regions (slug, name) values
+INSERT INTO regions (slug, name) VALUES
   ('latam', 'LATAM'),
   ('na', 'Norteamérica'),
   ('eu', 'Europa'),
   ('br', 'Brasil'),
   ('apac', 'Asia-Pacífico')
-on conflict (slug) do nothing;
+ON CONFLICT (slug) DO NOTHING;
 
 -- EQUIPOS
-create table if not exists teams (
-  id uuid primary key default gen_random_uuid(),
-  slug text unique not null,
-  name text not null,
-  tag text not null,
-  game text references games(slug),
-  region text references regions(slug),
-  crest text,                          -- color hex del escudo
-  motto text,
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS teams (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  tag TEXT NOT NULL,
+  game TEXT REFERENCES games(slug),
+  region TEXT REFERENCES regions(slug),
+  crest TEXT,
+  motto TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- JUGADORES
-create table if not exists players (
-  id uuid primary key default gen_random_uuid(),
-  slug text unique not null,
-  name text not null,
-  team_id uuid references teams(id) on delete set null,
-  game text references games(slug),
-  role text,
-  rating int not null default 1200,
-  stats jsonb not null default '{}'::jsonb,  -- kd, acs, adr, kast, hs, kda, csmin, dpm...
-  trend int not null default 0,
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS players (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
+  game TEXT REFERENCES games(slug),
+  role TEXT,
+  rating INT NOT NULL DEFAULT 1200,
+  stats JSONB NOT NULL DEFAULT '{}'::JSONB,
+  trend INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- TORNEOS
-create table if not exists tournaments (
-  id uuid primary key default gen_random_uuid(),
-  slug text unique not null,
-  name text not null,
-  game text references games(slug),
-  region text references regions(slug),
-  format text,
-  status text not null default 'upcoming' check (status in ('live','upcoming','completed')),
-  registration_status text,
-  prize text,
-  dates text,
-  participants int,
-  hue int not null default 260,
-  description text,
-  cover_image_url text,
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS tournaments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  game TEXT REFERENCES games(slug),
+  region TEXT REFERENCES regions(slug),
+  format TEXT,
+  status TEXT NOT NULL DEFAULT 'upcoming' CHECK (status IN ('live','upcoming','completed')),
+  registration_status TEXT,
+  prize TEXT,
+  dates TEXT,
+  participants INT,
+  hue INT NOT NULL DEFAULT 260,
+  description TEXT,
+  cover_image_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- SERIES (partidos)
-create table if not exists match_series (
-  id uuid primary key default gen_random_uuid(),
-  public_id text unique not null,      -- id legible para URLs, ej. 'm-live-1'
-  tournament_id uuid references tournaments(id) on delete cascade,
-  game text references games(slug),
-  stage text,
-  best_of int not null default 3,
-  status text not null default 'upcoming' check (status in ('live','upcoming','completed','cancelled')),
-  scheduled_at timestamptz,            -- fecha/hora real (con zona)
-  team_a_id uuid references teams(id),
-  team_b_id uuid references teams(id),
-  team_a_label text,                   -- para 'Ganador SF1' cuando no hay equipo
-  team_b_label text,
-  score_a int,
-  score_b int,
-  winner char(1) check (winner in ('a','b')),
-  mvp text,
-  current_map text,
-  stream_url text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS match_series (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  public_id TEXT UNIQUE NOT NULL,
+  tournament_id UUID REFERENCES tournaments(id) ON DELETE CASCADE,
+  game TEXT REFERENCES games(slug),
+  stage TEXT,
+  best_of INT NOT NULL DEFAULT 3,
+  status TEXT NOT NULL DEFAULT 'upcoming' CHECK (status IN ('live','upcoming','completed','cancelled')),
+  scheduled_at TIMESTAMPTZ,
+  team_a_id UUID REFERENCES teams(id),
+  team_b_id UUID REFERENCES teams(id),
+  team_a_label TEXT,
+  team_b_label TEXT,
+  score_a INT,
+  score_b INT,
+  winner CHAR(1) CHECK (winner IN ('a','b')),
+  mvp TEXT,
+  current_map TEXT,
+  stream_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- MAPAS / JUEGOS DE UNA SERIE
-create table if not exists match_maps (
-  id uuid primary key default gen_random_uuid(),
-  series_id uuid references match_series(id) on delete cascade,
-  sequence int not null default 1,
-  name text not null,
-  score_a int,
-  score_b int,
-  winner char(1) check (winner in ('a','b'))
+CREATE TABLE IF NOT EXISTS match_maps (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  series_id UUID REFERENCES match_series(id) ON DELETE CASCADE,
+  sequence INT NOT NULL DEFAULT 1,
+  name TEXT NOT NULL,
+  score_a INT,
+  score_b INT,
+  winner CHAR(1) CHECK (winner IN ('a','b'))
 );
 
 -- CLASIFICACIONES
-create table if not exists standings (
-  id uuid primary key default gen_random_uuid(),
-  tournament_id uuid references tournaments(id) on delete cascade,
-  team_id uuid references teams(id),
-  position int,
-  played int default 0,
-  wins int default 0,
-  losses int default 0,
-  maps_for int default 0,
-  maps_against int default 0,
-  points int default 0
+CREATE TABLE IF NOT EXISTS standings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tournament_id UUID REFERENCES tournaments(id) ON DELETE CASCADE,
+  team_id UUID REFERENCES teams(id),
+  position INT,
+  played INT DEFAULT 0,
+  wins INT DEFAULT 0,
+  losses INT DEFAULT 0,
+  maps_for INT DEFAULT 0,
+  maps_against INT DEFAULT 0,
+  points INT DEFAULT 0
 );
 
 -- NOTICIAS
-create table if not exists news_articles (
-  id uuid primary key default gen_random_uuid(),
-  slug text unique not null,
-  title text not null,
-  excerpt text,
-  body jsonb not null default '[]'::jsonb,   -- array de párrafos
-  author text,
-  game text references games(slug),
-  tournament_id uuid references tournaments(id),
-  hue int not null default 260,
-  published_at timestamptz not null default now(),
-  status text not null default 'published' check (status in ('draft','scheduled','published','archived'))
+CREATE TABLE IF NOT EXISTS news_articles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  excerpt TEXT,
+  body JSONB NOT NULL DEFAULT '[]'::JSONB,
+  author TEXT,
+  game TEXT REFERENCES games(slug),
+  tournament_id UUID REFERENCES tournaments(id),
+  hue INT NOT NULL DEFAULT 260,
+  published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft','scheduled','published','archived'))
 );
 
 -- ============================================================
 -- ROW LEVEL SECURITY
--- Los datos competitivos son públicos (lectura abierta con la clave anon).
--- La escritura queda solo para el panel de administración (service_role).
 -- ============================================================
-alter table games enable row level security;
-alter table regions enable row level security;
-alter table teams enable row level security;
-alter table players enable row level security;
-alter table tournaments enable row level security;
-alter table match_series enable row level security;
-alter table match_maps enable row level security;
-alter table standings enable row level security;
-alter table news_articles enable row level security;
+ALTER TABLE games ENABLE ROW LEVEL SECURITY;
+ALTER TABLE regions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE players ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tournaments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE match_series ENABLE ROW LEVEL SECURITY;
+ALTER TABLE match_maps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE standings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE news_articles ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de lectura pública
-create policy "Lectura pública de juegos" on games for select using (true);
-create policy "Lectura pública de regiones" on regions for select using (true);
-create policy "Lectura pública de equipos" on teams for select using (true);
-create policy "Lectura pública de jugadores" on players for select using (true);
-create policy "Lectura pública de torneos" on tournaments for select using (true);
-create policy "Lectura pública de series" on match_series for select using (true);
-create policy "Lectura pública de mapas" on match_maps for select using (true);
-create policy "Lectura pública de clasificaciones" on standings for select using (true);
-create policy "Lectura pública de noticias publicadas" on news_articles for select using (status = 'published');
+CREATE POLICY "Lectura pública de juegos" ON games FOR SELECT USING (TRUE);
+CREATE POLICY "Lectura pública de regiones" ON regions FOR SELECT USING (TRUE);
+CREATE POLICY "Lectura pública de equipos" ON teams FOR SELECT USING (TRUE);
+CREATE POLICY "Lectura pública de jugadores" ON players FOR SELECT USING (TRUE);
+CREATE POLICY "Lectura pública de torneos" ON tournaments FOR SELECT USING (TRUE);
+CREATE POLICY "Lectura pública de series" ON match_series FOR SELECT USING (TRUE);
+CREATE POLICY "Lectura pública de mapas" ON match_maps FOR SELECT USING (TRUE);
+CREATE POLICY "Lectura pública de clasificaciones" ON standings FOR SELECT USING (TRUE);
+CREATE POLICY "Lectura pública de noticias publicadas" ON news_articles FOR SELECT USING (status = 'published');
 
 -- Índices
-create index if not exists idx_series_tournament on match_series(tournament_id);
-create index if not exists idx_series_status on match_series(status);
-create index if not exists idx_series_scheduled on match_series(scheduled_at);
-create index if not exists idx_players_team on players(team_id);
-create index if not exists idx_standings_tournament on standings(tournament_id);
-create index if not exists idx_news_published on news_articles(published_at desc);
+CREATE INDEX IF NOT EXISTS idx_series_tournament ON match_series(tournament_id);
+CREATE INDEX IF NOT EXISTS idx_series_status ON match_series(status);
+CREATE INDEX IF NOT EXISTS idx_series_scheduled ON match_series(scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
+CREATE INDEX IF NOT EXISTS idx_standings_tournament ON standings(tournament_id);
+CREATE INDEX IF NOT EXISTS idx_news_published ON news_articles(published_at DESC);
