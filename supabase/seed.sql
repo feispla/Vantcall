@@ -1,5 +1,5 @@
 -- ============================================================
--- VANTS — Datos iniciales (demo, ficticios)
+-- VANTS — Datos iniciales
 -- Ejecutar DESPUÉS de schema.sql en el SQL Editor de Supabase
 -- ============================================================
 
@@ -19,7 +19,7 @@ INSERT INTO teams (slug, name, tag, game, region, crest, motto) VALUES
   ('tide-breaker', 'Tide Breaker', 'TDB', 'cs2', 'latam', '#0e4a3a', 'Ola imparable')
 ON CONFLICT (slug) DO NOTHING;
 
--- JUGADORES (equipo por slug)
+-- JUGADORES
 INSERT INTO players (slug, name, game, role, rating, stats, trend) VALUES
   ('kryoz', 'Kryoz', 'valorant', 'Duelista', 2841, '{"kd":1.31,"acs":268,"hs":24}', 2),
   ('sh1nya', 'sh1nya', 'valorant', 'Iniciador', 2712, '{"kd":1.12,"acs":231,"hs":19}', 1),
@@ -37,7 +37,7 @@ INSERT INTO players (slug, name, game, role, rating, stats, trend) VALUES
   ('tidalsurge', 'TidalSurge', 'cs2', 'Entry', 2601, '{"kd":1.08,"adr":76.7,"kast":73.1,"hs":39}', 3)
 ON CONFLICT (slug) DO NOTHING;
 
--- Vincular jugadores a sus equipos
+-- Vincular jugadores a equipos
 UPDATE players p SET team_id = t.id FROM teams t WHERE t.slug = 'nova-strike' AND p.slug IN ('kryoz','sh1nya','davexx','mortal1n','ravenlord');
 UPDATE players p SET team_id = t.id FROM teams t WHERE t.slug = 'zenith-pulse' AND p.slug = 'fenrira';
 UPDATE players p SET team_id = t.id FROM teams t WHERE t.slug = 'iron-wolves' AND p.slug IN ('blazko','frozent');
@@ -55,7 +55,7 @@ INSERT INTO tournaments (slug, name, game, region, format, status, prize, dates,
   ('winter-clash-apac', 'VANTS Winter Clash — APAC', 'cs2', 'apac', 'Fase de grupos + Playoffs', 'upcoming', '$12,000 USD', '15 — 22 nov 2026', 10, 190, 'El evento de cierre de temporada para Asia-Pacífico.')
 ON CONFLICT (slug) DO NOTHING;
 
--- SERIES (partidos) — scheduled_at en hora de Venezuela (America/Caracas, UTC-4)
+-- SERIES (partidos)
 INSERT INTO match_series (public_id, tournament_id, game, stage, best_of, status, scheduled_at, team_a_id, team_b_id, team_a_label, team_b_label, score_a, score_b, winner, mvp, current_map)
 SELECT 'm-live-1', t.id, 'valorant', 'Playoffs · Semifinal', 3, 'live', NOW() - INTERVAL '42 minutes',
   (SELECT id FROM teams WHERE slug='nova-strike'), (SELECT id FROM teams WHERE slug='aurora-blaze'), NULL, NULL, 1, 1, NULL, NULL, 'Haven · Ronda 18'
@@ -98,7 +98,7 @@ SELECT 'm-done-3', t.id, 'cs2', 'Ronda suiza 3', 3, 'completed', NOW() - INTERVA
 FROM tournaments t WHERE t.slug='challenger-series-cs2'
 ON CONFLICT (public_id) DO NOTHING;
 
--- MAPAS de la final de la Summer Cup
+-- MAPAS
 INSERT INTO match_maps (series_id, sequence, name, score_a, score_b, winner)
 SELECT s.id, v.seq, v.name, v.sa, v.sb, v.w
 FROM match_series s, (VALUES
