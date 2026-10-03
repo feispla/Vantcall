@@ -79,6 +79,9 @@ VantsportsOficial/
 
 ---
 
+
+---
+
 ## 🗄️ Base de Datos (Supabase)
 
 ### Tablas Principales
@@ -112,6 +115,8 @@ VantsportsOficial/
 |---------|-------------|
 | `/vincular riot` | Vincula cuenta de Riot Games al perfil |
 | `/perfil` | Muestra stats del jugador (torneos, rango, cuentas vinculadas) |
+| `/valorant ranking` | Muestra top 10 de Valorant |
+| `/valorant perfil` | Muestra stats de Valorant de un jugador |
 | `/status` | Estado del bot (solo staff) |
 | `/connect` | Conecta el servidor con VANTS (guarda token en Vault) |
 | `/sync` | Sincroniza datos de torneos y jugadores |
@@ -321,7 +326,7 @@ MIT License - ver [LICENSE](LICENSE) para más detalles.
 
 - **Web:** [https://vantsbetaa.pplx.app/](https://vantsbetaa.pplx.app/)
 - **Discord:** Únete al servidor oficial
-- **Email:** feisplaa@gmail.com
+- **Email:** [feisplaa@gmail.com](mailto:feisplaa@gmail.com)
 
 ---
 
@@ -332,5 +337,6 @@ MIT License - ver [LICENSE](LICENSE) para más detalles.
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
 [![Discord](https://img.shields.io/badge/Discord-Server-5865F2?logo=discord)](https://discord.com)
 [![Stripe](https://img.shields.io/badge/Stripe-Payments-008CDD?logo=stripe)](https://stripe.com)
+[![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway)](https://railway.app/new?template=https://github.com/feispla/VantsportsOficial)
 
 </div>
