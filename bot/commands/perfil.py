@@ -6,12 +6,9 @@ import discord
 from utils.supabase_client import supabase
 
 
-def _channel_url() -> str | None:
-    guild_id = os.getenv("DISCORD_GUILD_ID")
-    channel_id = os.getenv("DISCORD_VALORANT_STATS_CHANNEL_ID")
-    if not guild_id or not channel_id:
-        return None
-    return f"https://discord.com/channels/{guild_id}/{channel_id}"
+def _channel_url() -> str:
+    """URL al canal de ValoTracker en VANTS"""
+    return "https://discord.com/channels/1546641331927908472/1546641332632817686"
 
 
 def _account_url(display_name: str) -> str:
@@ -105,10 +102,13 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
             url=f"https://tracker.gg/valorant/profile/riot/{encoded_handle}",
             row=0,
         ))
-        if channel_url := _channel_url():
-            view.add_item(discord.ui.Button(
-                label="Abrir ValoTracker", style=discord.ButtonStyle.link, url=channel_url, row=0
-            ))
+        # Botón a ValoTracker (siempre visible si hay Riot ID)
+        view.add_item(discord.ui.Button(
+            label="Abrir ValoTracker",
+            style=discord.ButtonStyle.link,
+            url=_channel_url(),
+            row=0
+        ))
     if steam_id:
         view.add_item(discord.ui.Button(
             label="Perfil de Steam",
