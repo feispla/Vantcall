@@ -18,9 +18,9 @@ def _account_url(display_name: str) -> str:
 async def perfil_handler(interaction: discord.Interaction, usuario: discord.User | None = None) -> None:
     target = usuario or interaction.user
     
-    # ✅ Defer al principio para evitar timeout
+    # ✅ Defer PÚBLICO (al comienzo, antes de las consultas)
     await interaction.response.defer()
-    
+
     try:
         player_response = (
             supabase.table("players")
@@ -35,7 +35,6 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
                 description="Este usuario no tiene cuenta VANTS vinculada.",
                 color=0xE30613,
             )
-            # ✅ Error privado (ephemeral=True)
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
@@ -70,7 +69,6 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
             .execute()
         )
     except Exception:
-        # ✅ Error privado (ephemeral=True)
         await interaction.followup.send(
             "❌ No se pudo consultar el perfil ahora. Inténtalo de nuevo más tarde.",
             ephemeral=True,
@@ -107,7 +105,6 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
             url=f"https://tracker.gg/valorant/profile/riot/{encoded_handle}",
             row=0,
         ))
-        # Botón a ValoTracker (siempre visible si hay Riot ID)
         view.add_item(discord.ui.Button(
             label="Abrir ValoTracker",
             style=discord.ButtonStyle.link,
@@ -127,5 +124,4 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
         url=_account_url(display_name),
         row=2,
     ))
-    # ✅ Perfil exitoso público (ephemeral=False por defecto)
     await interaction.followup.send(embed=embed, view=view)
