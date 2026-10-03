@@ -23,8 +23,8 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
         )
         return
 
-    # ✅ Defer al principio para evitar timeout
-    await interaction.response.defer()
+    # ✅ Defer PRIVADO (después de validar formato, antes del try)
+    await interaction.response.defer(ephemeral=True)
 
     try:
         player_response = (
@@ -35,18 +35,14 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
             .execute()
         )
         if not player_response.data:
-            # ✅ Aviso privado (ephemeral=True)
             await interaction.followup.send(
                 "⚠️ Primero vincula tu Discord con VANTS en https://vants.gg/cuenta",
-                ephemeral=True,
             )
             return
 
-        if not player_response.data or not player_response.data[0].get("auth_user_id"):
-            # ✅ Aviso privado (ephemeral=True)
+        if not player_response.data[0].get("auth_user_id"):
             await interaction.followup.send(
                 "⚠️ Tu cuenta de VANTS todavía no tiene un usuario autenticado asociado.",
-                ephemeral=True,
             )
             return
 
@@ -62,10 +58,8 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
             on_conflict="user_id,game",
         ).execute()
     except Exception:
-        # ✅ Error privado (ephemeral=True)
         await interaction.followup.send(
             "❌ No se pudo guardar la cuenta ahora. Inténtalo de nuevo más tarde.",
-            ephemeral=True,
         )
         return
 
@@ -91,11 +85,9 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
         style=discord.ButtonStyle.link,
         url=f"https://tracker.gg/valorant/profile/riot/{encoded_handle}",
     ))
-    # Botón a ValoTracker (siempre visible)
     view.add_item(discord.ui.Button(
         label="Ir a #valorant-stats",
         style=discord.ButtonStyle.link,
         url=_channel_url()
     ))
-    # ✅ Mensaje de éxito público (visible para todos)
     await interaction.followup.send(embed=embed, view=view)
