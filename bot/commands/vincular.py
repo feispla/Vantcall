@@ -10,12 +10,9 @@ from utils.supabase_client import supabase
 RIOT_HANDLE_PATTERN = re.compile(r"^[^\s#]{3,16}#[A-Za-z0-9]{3,5}$")
 
 
-def _channel_url() -> str | None:
-    guild_id = os.getenv("DISCORD_GUILD_ID")
-    channel_id = os.getenv("DISCORD_VALORANT_STATS_CHANNEL_ID")
-    if not guild_id or not channel_id:
-        return None
-    return f"https://discord.com/channels/{guild_id}/{channel_id}"
+def _channel_url() -> str:
+    """URL al canal de ValoTracker en VANTS"""
+    return "https://discord.com/channels/1546641331927908472/1546641332632817686"
 
 
 async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -> None:
@@ -26,6 +23,9 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
         )
         return
 
+    # ✅ Defer al principio para evitar timeout
+    await interaction.response.defer()
+
     try:
         player_response = (
             supabase.table("players")
@@ -35,14 +35,16 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
             .execute()
         )
         if not player_response.data:
-            await interaction.response.send_message(
+            # ✅ Aviso privado (ephemeral=True)
+            await interaction.followup.send(
                 "⚠️ Primero vincula tu Discord con VANTS en https://vants.gg/cuenta",
                 ephemeral=True,
             )
             return
 
         if not player_response.data or not player_response.data[0].get("auth_user_id"):
-            await interaction.response.send_message(
+            # ✅ Aviso privado (ephemeral=True)
+            await interaction.followup.send(
                 "⚠️ Tu cuenta de VANTS todavía no tiene un usuario autenticado asociado.",
                 ephemeral=True,
             )
@@ -60,7 +62,8 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
             on_conflict="user_id,game",
         ).execute()
     except Exception:
-        await interaction.response.send_message(
+        # ✅ Error privado (ephemeral=True)
+        await interaction.followup.send(
             "❌ No se pudo guardar la cuenta ahora. Inténtalo de nuevo más tarde.",
             ephemeral=True,
         )
@@ -88,8 +91,11 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
         style=discord.ButtonStyle.link,
         url=f"https://tracker.gg/valorant/profile/riot/{encoded_handle}",
     ))
-    if channel_url := _channel_url():
-        view.add_item(discord.ui.Button(
-            label="Ir a #valorant-stats", style=discord.ButtonStyle.link, url=channel_url
-        ))
-    await interaction.response.send_message(embed=embed, view=view)
+    # Botón a ValoTracker (siempre visible)
+    view.add_item(discord.ui.Button(
+        label="Ir a #valorant-stats",
+        style=discord.ButtonStyle.link,
+        url=_channel_url()
+    ))
+    # ✅ Mensaje de éxito público (visible para todos)
+    await interaction.followup.send(embed=embed, view=view)
