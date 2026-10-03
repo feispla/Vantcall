@@ -12,7 +12,9 @@ def _channel_url() -> str:
 
 
 def _account_url(display_name: str) -> str:
-    return f"https://vants.gg/u/{quote(display_name, safe='')}"
+    """URL al perfil del jugador en la web"""
+    slug = display_name.lower().replace(" ", "").replace("_", "")
+    return f"https://vantsbetaa.pplx.app/#/jugador/{slug}"
 
 
 async def perfil_handler(interaction: discord.Interaction, usuario: discord.User | None = None) -> None:
@@ -94,7 +96,7 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
         value=(f"[Perfil](https://steamcommunity.com/profiles/{steam_id})" if steam_id else "No vinculado"),
         inline=True,
     )
-    embed.set_footer(text="VANTS · vants.gg")
+    embed.set_footer(text="VANTS · vantsbetaa.pplx.app")
 
     view = discord.ui.View()
     if riot_handle:
@@ -119,9 +121,10 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
             row=1,
         ))
     view.add_item(discord.ui.Button(
-        label="Perfil completo en vants.gg",
+        label="Perfil completo en vantsbetaa.pplx.app",
         style=discord.ButtonStyle.link,
         url=_account_url(display_name),
         row=2,
     ))
+    await interaction.followup.send(embed=embed, view=view)
     await interaction.followup.send(embed=embed, view=view)
