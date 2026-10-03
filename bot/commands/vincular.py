@@ -1,4 +1,5 @@
 
+
 import re
 from datetime import datetime, timezone
 from urllib.parse import quote
@@ -36,7 +37,7 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
         )
         if not player_response.data:
             await interaction.followup.send(
-                "⚠️ Primero vincula tu Discord con VANTS en https://vants.gg/cuenta",
+                "⚠️ Primero vincula tu Discord con VANTS en https://vantsbetaa.pplx.app/#/jugadores",
             )
             return
 
@@ -76,7 +77,7 @@ async def vincular_riot_handler(interaction: discord.Interaction, handle: str) -
         value="Usa `/link` del bot **ValoTracker** con el mismo Riot ID.",
         inline=False,
     )
-    embed.set_footer(text="VANTS · vants.gg")
+    embed.set_footer(text="VANTS · vantsbetaa.pplx.app")
 
     view = discord.ui.View()
     encoded_handle = quote(handle, safe="")
