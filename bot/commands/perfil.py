@@ -17,6 +17,10 @@ def _account_url(display_name: str) -> str:
 
 async def perfil_handler(interaction: discord.Interaction, usuario: discord.User | None = None) -> None:
     target = usuario or interaction.user
+    
+    # ✅ Defer al principio para evitar timeout
+    await interaction.response.defer()
+    
     try:
         player_response = (
             supabase.table("players")
@@ -31,7 +35,8 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
                 description="Este usuario no tiene cuenta VANTS vinculada.",
                 color=0xE30613,
             )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            # ✅ Error privado (ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
         player = player_response.data[0]
@@ -54,7 +59,6 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
                 )
             tournaments = tournaments_response.count or 0
         except Exception:
-            # The profile remains useful while the optional tournament table is pending.
             tournaments = 0
 
         accounts_response = (
@@ -66,7 +70,8 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
             .execute()
         )
     except Exception:
-        await interaction.response.send_message(
+        # ✅ Error privado (ephemeral=True)
+        await interaction.followup.send(
             "❌ No se pudo consultar el perfil ahora. Inténtalo de nuevo más tarde.",
             ephemeral=True,
         )
@@ -122,4 +127,5 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
         url=_account_url(display_name),
         row=2,
     ))
-    await interaction.response.send_message(embed=embed, view=view)
+    # ✅ Perfil exitoso público (ephemeral=False por defecto)
+    await interaction.followup.send(embed=embed, view=view)
