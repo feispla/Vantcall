@@ -86,6 +86,28 @@ COMMANDS = [
             opt(STRING, "nombre", "Nombre (por defecto Temporada N)"),
         ]),
     ]},
+    # Moderación
+    {"name": "warn", "description": "Advertir a un usuario", "options": [opt(USER, "usuario", "Usuario a advertir", True), opt(STRING, "razon", "Razón", True)]},
+    {"name": "kick", "description": "Expulsar a un usuario", "options": [opt(USER, "usuario", "Usuario a expulsar", True), opt(STRING, "razon", "Razón", True)]},
+    {"name": "ban", "description": "Banear a un usuario", "options": [opt(USER, "usuario", "Usuario a banear", True), opt(STRING, "razon", "Razón", True), opt(INTEGER, "borrar_dias", "Días de mensajes a borrar (0-7)")]},
+    {"name": "mute", "description": "Silenciar a un usuario", "options": [opt(USER, "usuario", "Usuario a silenciar", True), opt(INTEGER, "minutos", "Minutos", True), opt(STRING, "razon", "Razón", True)]},
+    {"name": "unmute", "description": "Quitar el silencio a un usuario", "options": [opt(USER, "usuario", "Usuario a dessilenciar", True)]},
+    {"name": "clear", "description": "Borrar mensajes del canal", "options": [opt(INTEGER, "cantidad", "Número de mensajes (máx 100)", True)]},
+    {"name": "lock", "description": "Bloquear el canal actual"},
+    {"name": "unlock", "description": "Desbloquear el canal actual"},
+    # Análisis
+    {"name": "stats_servidor", "description": "Estadísticas del servidor y la plataforma"},
+    {"name": "stats_jugador", "description": "Estadísticas VANTS de un jugador", "options": [opt(USER, "usuario", "Jugador a consultar (por defecto tú)")]},
+    {"name": "actividad", "description": "Mensajes por canal en los últimos días", "options": [opt(INTEGER, "dias", "Días a analizar (por defecto 7)")]},
+    {"name": "top", "description": "Top 10 miembros más activos", "options": [opt(INTEGER, "dias", "Días a analizar (por defecto 7)")]},
+    # Informes
+    {"name": "informe", "description": "Informe semanal de VANTCALL"},
+    {"name": "resumen", "description": "Resumen actual de la plataforma"},
+    # Comunidad
+    {"name": "anuncio", "description": "Publicar un anuncio en #anuncios", "options": [opt(STRING, "titulo", "Título", True), opt(STRING, "mensaje", "Contenido", True), opt(STRING, "imagen", "URL de imagen")]},
+    {"name": "evento_crear", "description": "Crear un evento en la plataforma", "options": [opt(STRING, "titulo", "Título", True), opt(STRING, "tipo", "Tipo (torneo, evento, scrim)", True), opt(STRING, "fecha", "YYYY-MM-DD o YYYY-MM-DD HH:MM", True), opt(STRING, "descripcion", "Descripción")]},
+    {"name": "torneo_crear", "description": "Crear un torneo", "options": [opt(STRING, "nombre", "Nombre del torneo", True), opt(STRING, "formato", "Formato", choices=FORMATOS, required=True), opt(STRING, "fecha_inicio", "YYYY-MM-DD", True), opt(INTEGER, "max_participantes", "Máximo de jugadores")]},
+    {"name": "recordatorio", "description": "Programar un recordatorio en este canal", "options": [opt(STRING, "mensaje", "Mensaje", True), opt(INTEGER, "minutos", "En cuántos minutos", True)]},
 ]
 
 
