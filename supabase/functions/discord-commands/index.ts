@@ -8,8 +8,13 @@
 import nacl from 'npm:tweetnacl@1.0.3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+ feat/diseno-premium
+const DISCORD_PUBLIC_KEY = Deno.env.get('DISCORD_PUBLIC_KEY') ?? '';
+const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantcall-esports1.pplx.app').replace(/\/$/, '');
+
 const ENV_PUBLIC_KEY = Deno.env.get('DISCORD_PUBLIC_KEY') ?? '';
 const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbetaa.pplx.app').replace(/\/$/, '');
+ main
 const TZ = Deno.env.get('VANTS_TZ') ?? 'Europe/Madrid';
 const INVITE = 'https://discord.gg/rCHE7jvRS4';
 const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
@@ -36,6 +41,9 @@ function hexToBytes(value: string): Uint8Array | null {
   for (let i = 0; i < bytes.length; i++) bytes[i] = Number.parseInt(value.slice(i * 2, i * 2 + 2), 16);
   return bytes;
 }
+ feat/diseno-premium
+function isValidDiscordRequest(req: Request, body: string): boolean {
+
 // Clave pública: secret DISCORD_PUBLIC_KEY o Vault (la guarda el panel admin al conectar el bot)
 let vaultKey: string | null = null;
 async function publicKey(): Promise<string> {
@@ -47,6 +55,7 @@ async function publicKey(): Promise<string> {
   return vaultKey ?? '';
 }
 function isValidDiscordRequest(req: Request, body: string, DISCORD_PUBLIC_KEY: string): boolean {
+ main
   const signature = hexToBytes(req.headers.get('X-Signature-Ed25519') ?? '');
   const timestamp = req.headers.get('X-Signature-Timestamp') ?? '';
   const publicKey = hexToBytes(DISCORD_PUBLIC_KEY);
@@ -123,6 +132,24 @@ function parseLocalDate(input: unknown): string | null {
 }
 const slugify = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'torneo';
 
+ feat/diseno-premium
+// ---------- comandos ----------
+async function handle(path: string, opts: Record<string, unknown>, user: DUser, guildId?: string): Promise<Response> {
+  switch (path) {
+    case 'ayuda': case 'help':
+      return reply('', [{ title: 'Comandos de VANTS', color: RED, description: [
+        '`/perfil` — tu perfil competitivo (o el de otro jugador)',
+        '`/ranking` — top 10 de la temporada',
+        '`/torneos` — torneos abiertos y próximos',
+        '`/torneo inscribir` — inscribirte en un torneo',
+        '`/eventos` — próximos eventos',
+        '`/calendario` — lo que viene esta semana',
+        '`/planes` — BASIC, PRO y ELITE',
+        '`/vincular` — conecta tu Discord con la web',
+        '`/web` — enlaces de la plataforma',
+        '', '**Staff:** `/vants canal`, `/vants torneo-crear`, `/vants torneo-estado`, `/vants evento-crear`, `/vants temporada-iniciar`, `/vants estado`',
+      ].join('\n') }]);
+
 // ---------- catálogo de comandos (public.bot_commands) ----------
 type Cmd = { name: string; description: string; kind: string; category: string; enabled: boolean; staff_only: boolean; min_plan: string; response_title: string | null; response_body: string | null; response_url: string | null; color: string | null; ephemeral: boolean; uses: number };
 let catalog: { at: number; map: Map<string, Cmd> } | null = null;
@@ -162,6 +189,7 @@ async function handle(path: string, opts: Record<string, unknown>, user: DUser, 
       const mine = (perks ?? []).filter((x) => PLAN_ORDER.indexOf(String(x.tier)) <= rank);
       return reply('', [{ title: `Tu zona ${PLAN_NAME[plan]}`, color: plan === 'elite' ? AMBER : RED, url: url('zona'), description: mine.map((x) => `• ${clip(x.title, 80)}${x.cta_url && String(x.cta_url).startsWith('https://') ? ` — [abrir](${x.cta_url})` : ''}`).join('\n') || 'Tus ventajas aparecerán aquí.', fields: [{ name: 'Panel completo', value: `[Abrir zona exclusiva](${url('zona')})` }] }]);
     }
+ main
 
     case 'web':
       return reply('', [{ title: 'VANTS · vantcall esports', color: RED, url: SITE, description: `[Web](${SITE}) · [Ranked](${url('ranked')}) · [Torneos](${url('torneos')}) · [Calendario](${url('calendario')}) · [Planes](${url('precios')}) · [Zona de plan](${url('zona')})` }], false);
@@ -329,6 +357,10 @@ async function handle(path: string, opts: Record<string, unknown>, user: DUser, 
       return reply('Comando no reconocido.');
     }
 
+ feat/diseno-premium
+    default:
+      return reply(`No reconozco \`/${clip(path, 40)}\`. Usa \`/ayuda\` para ver los comandos.`);
+
     default: {
       const c = (await commands()).get(path.split(' ')[0]);
       if (c && c.kind === 'custom') {
@@ -336,6 +368,7 @@ async function handle(path: string, opts: Record<string, unknown>, user: DUser, 
       }
       return reply(`No reconozco \`/${clip(path, 40)}\`. Usa \`/ayuda\` para ver los comandos.`);
     }
+ main
   }
 }
 
@@ -343,7 +376,11 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const body = await req.text();
   let valid = false;
+ feat/diseno-premium
+  try { valid = isValidDiscordRequest(req, body); } catch { valid = false; }
+
   try { valid = isValidDiscordRequest(req, body, await publicKey()); } catch { valid = false; }
+main
   if (!valid) return json({ error: 'Invalid Discord request signature' }, 401);
 
   let interaction: Interaction;
@@ -354,6 +391,11 @@ Deno.serve(async (req) => {
   const user = interaction.member?.user ?? interaction.user;
   if (!user?.id) return reply('No se pudo identificar tu usuario de Discord.');
   const { path, opts } = commandPath(interaction.data);
+feat/diseno-premium
+  try {
+    return await handle(path, opts, user, interaction.guild_id);
+  } catch (e) {
+
   const root = path.split(' ')[0];
   const cmd = (await commands()).get(root);
   if (cmd && !cmd.enabled) return reply(`El comando \`/${root}\` está desactivado por el staff.`);
@@ -369,6 +411,7 @@ Deno.serve(async (req) => {
     return res;
   } catch (e) {
     logRun(root, user, interaction.guild_id, false).catch(() => {});
+ main
     console.error('discord-commands', path, e);
     return reply('Algo falló al procesar el comando. Inténtalo de nuevo en un momento.');
   }
