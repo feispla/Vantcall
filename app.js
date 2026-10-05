@@ -7,69 +7,29 @@ const DISCORD_INVITE = 'https://discord.gg/rCHE7jvRS4';
 
 const GAMES = { valorant: 'VALORANT', cs2: 'Counter-Strike 2', lol: 'League of Legends' };
 
-// Rango VANTS: 8 niveles (vision/rangos). Umbrales orientativos por MMR.
-const VANTS_RANKS = [
-  { key: 'hierro', name: 'Hierro', min: 0, color: '#8a9099' },
-  { key: 'bronce', name: 'Bronce', min: 900, color: '#b87333' },
-  { key: 'plata', name: 'Plata', min: 1100, color: '#c9d1d9' },
-  { key: 'oro', name: 'Oro', min: 1300, color: '#e5b93c' },
-  { key: 'platino', name: 'Platino', min: 1500, color: '#2ec4b6' },
-  { key: 'diamante', name: 'Diamante', min: 1700, color: '#9b6bff' },
-  { key: 'titan', name: 'Titán', min: 1900, color: '#3ddc84' },
-  { key: 'escarlata', name: 'Escarlata', min: 2100, color: '#ff4655' },
+// Rangos de VALORANT (Riot). El campo rank de la DB guarda el tier actual del jugador
+// (Iron, Bronze, Silver, Gold, Platinum, Diamond, Ascendant, Immortal, Radiant).
+const VALORANT_RANKS = [
+  { name: 'Iron', color: '#8a9099' },
+  { name: 'Bronze', color: '#b87333' },
+  { name: 'Silver', color: '#c9d1d9' },
+  { name: 'Gold', color: '#e5b93c' },
+  { name: 'Platinum', color: '#2ec4b6' },
+  { name: 'Diamond', color: '#9b6bff' },
+  { name: 'Ascendant', color: '#3ddc84' },
+  { name: 'Immortal', color: '#c74a8b' },
+  { name: 'Radiant', color: '#ff4655' },
 ];
-function rankFor(stat) {
-  if (!stat) return VANTS_RANKS[0];
-  const byName = stat.rank && VANTS_RANKS.find((r) => stat.rank.toLowerCase().startsWith(r.key.slice(0, 4)));
-  if (byName) return byName;
-  let r = VANTS_RANKS[0];
-  for (const x of VANTS_RANKS) if ((stat.mmr || 0) >= x.min) r = x;
-  return r;
+function valorantRankColor(rankName) {
+  if (!rankName) return '#8a9099';
+  const base = String(rankName).trim().split(' ')[0].toLowerCase();
+  const r = VALORANT_RANKS.find((x) => x.name.toLowerCase() === base);
+  return r ? r.color : '#8a9099';
 }
-// Emblemas de rango VANTS: cada nivel añade un elemento (chevrones → alas → gema → corona → halo)
-const RANK_SHADES = {
-  hierro: ['#c3c8cf', '#5d636b', '#2b2f35'], bronce: ['#f1b07a', '#b87333', '#4f2a10'], plata: ['#ffffff', '#b9c3cc', '#4f5a65'],
-  oro: ['#fff0b3', '#e5b93c', '#7a5408'], platino: ['#b8fff6', '#2ec4b6', '#0b4f49'], diamante: ['#e3d4ff', '#9b6bff', '#3a1f7a'],
-  titan: ['#c9ffe1', '#3ddc84', '#0d5a32'], escarlata: ['#ffd0a1', '#ff4655', '#5a0a14'],
-};
-function rankEmblem(r, size = 64) {
-  const i = VANTS_RANKS.indexOf(r);
-  const [hi, mid, lo] = RANK_SHADES[r.key] || ['#fff', r.color, '#000'];
-  const id = 're-' + r.key;
-  const chevrons = Math.min(3, (i % 3) + 1);
-  const wings = i >= 3;
-  const gem = i >= 5;
-  const crown = i >= 6;
-  const halo = i === 7;
-  let chev = '';
-  for (let c = 0; c < chevrons; c++) {
-    const y = 40 + c * 7 - (chevrons - 1) * 3.5;
-    chev += `<path d="M24 ${y} L32 ${y + 6} L40 ${y}" fill="none" stroke="url(#${id}-l)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>`;
-  }
-  return `<svg class="rank-emblem-svg" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true">
-    <defs>
-      <linearGradient id="${id}-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mid}"/><stop offset="1" stop-color="${lo}"/></linearGradient>
-      <linearGradient id="${id}-l" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${hi}"/><stop offset="1" stop-color="${mid}"/></linearGradient>
-      <radialGradient id="${id}-g" cx=".5" cy=".45" r=".55"><stop offset="0" stop-color="${mid}" stop-opacity=".55"/><stop offset="1" stop-color="${mid}" stop-opacity="0"/></radialGradient>
-    </defs>
-    ${halo ? `<circle cx="32" cy="32" r="30" fill="url(#${id}-g)"/><path d="M32 2 L35 9 L32 7 L29 9 Z M10 14 L16 17 L13 19 Z M54 14 L48 17 L51 19 Z" fill="${hi}" opacity=".9"/>` : ''}
-    ${wings ? `<path d="M14 24 L2 20 L7 30 L3 36 L13 36 Z" fill="url(#${id}-l)" opacity=".85"/><path d="M50 24 L62 20 L57 30 L61 36 L51 36 Z" fill="url(#${id}-l)" opacity=".85"/>` : ''}
-    <path d="M32 6 L50 14 L50 34 C50 45 42 53 32 58 C22 53 14 45 14 34 L14 14 Z" fill="url(#${id}-f)" stroke="url(#${id}-l)" stroke-width="2"/>
-    <path d="M32 10 L46 16.5 L46 33.5 C46 42 40 48.5 32 52.5 C24 48.5 18 42 18 33.5 L18 16.5 Z" fill="none" stroke="${hi}" stroke-opacity=".28" stroke-width="1"/>
-    ${gem ? `<path d="M32 18 L38 24 L32 32 L26 24 Z" fill="url(#${id}-l)"/><path d="M26 24 L38 24 L32 32 Z" fill="${lo}" opacity=".35"/>` : `<path d="M32 17 L35 22 L32 27 L29 22 Z" fill="url(#${id}-l)" opacity=".9"/>`}
-    ${chev}
-    ${crown ? `<path d="M22 8 L26 2 L29 6 L32 0 L35 6 L38 2 L42 8 Z" fill="url(#${id}-l)"/>` : ''}
-  </svg>`;
-}
+// Chip de texto simple con el rango VALORANT del jugador (sin emblemas de fantasía).
 function rankBadge(stat) {
-  const r = rankFor(stat);
- feat/diseno-premium
-  const label = stat && stat.placement_done === false ? 'Placement' : (stat && stat.rank ? stat.rank : r.name);
-  return `<span class="rank-badge rank-${r.key}" style="--rank:${r.color}">${rankEmblem(r, 22)}${esc(label)}</span>`;
-
-  const icon = window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-badge-emblem') : '<span class="rank-gem"></span>';
-  return `<span class="rank-badge" style="--rank:${r.color}">${icon}${esc(stat && stat.rank ? stat.rank : r.name)}</span>`;
- main
+  const rankName = stat && stat.rank ? String(stat.rank) : 'Unranked';
+  return `<span class="rank-badge" style="--rank:${valorantRankColor(rankName)}">${esc(rankName)}</span>`;
 }
 
 const fmtDate = (d, opts) => d ? new Date(d).toLocaleDateString('es-ES', opts || { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
@@ -175,25 +135,6 @@ function groupByDay(items, dateKey) {
   return [...groups.entries()];
 }
 
-feat/diseno-premium
-const RANKS_STRIP = `<div class="ranks-ladder">${VANTS_RANKS.map((r, i) => {
-  const next = VANTS_RANKS[i + 1];
-  return `<div class="rank-tile rank-${r.key}${i === 7 ? ' is-apex' : i >= 5 ? ' is-high' : ''}" style="--rank:${r.color}">
-    <span class="rank-tier-num">${String(i + 1).padStart(2, '0')}</span>
-    <div class="rank-emblem">${rankEmblem(r, 72)}</div>
-    <div class="rank-name">${r.name}</div>
-    <div class="rank-min">${i === 7 ? r.min + '+ MMR · Top global' : `${r.min}–${next.min - 1} MMR`}</div>
-    <div class="rank-bar" aria-hidden="true"><span style="width:${Math.round(((i + 1) / VANTS_RANKS.length) * 100)}%"></span></div>
-  </div>`;
-}).join('')}</div>`;
-
-const RANKS_STRIP = `<div class="ranks-strip">${VANTS_RANKS.map((r, i) => `
-  <div class="rank-tile${i >= 5 ? ' rank-tile-elite' : ''}${i === 7 ? ' rank-tile-apex' : ''}" style="--rank:${r.color}">
-    <span class="rank-tier">${window.VantsRanks ? VantsRanks.RANK_ART[r.key].tier : i + 1}</span>
-    <div class="rank-emblem">${window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-svg') : ''}</div>
-    <div class="rank-name">${r.name}</div><div class="rank-min">${i === 7 ? 'Top global' : r.min + '+ MMR'}</div>
-  </div>`).join('')}</div>`;
-main
 
 const DISCORD_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>';
 
@@ -253,11 +194,7 @@ const DOC_CONTENT = {
         <div class="hero-grid" aria-hidden="true"></div>
         <div class="hero-badge"><span class="live-dot"></span> BETA ABIERTA · VALORANT · CS2 · LOL</div>
         <h1>VANT<span class="hero-accent">CALL</span></h1>
- feat/diseno-premium
-        <p class="hero-tagline">Ranked, torneos y eventos con datos reales. Entra con Discord, Google, Steam o tu correo y compite en la plataforma.</p>
-=======
         <p class="hero-tagline">La liga competitiva de la comunidad: ranked con MMR real, torneos con premios y un bot de Discord conectado a tu perfil. Entra con Google, Discord, Steam o correo.</p>
- main
         <div class="hero-cta">
           <a href="#/login" class="btn btn-primary btn-lg" data-auth-cta>JUGAR GRATIS</a>
           <a href="#/torneos" class="btn btn-secondary btn-lg">VER TORNEOS</a>
@@ -289,11 +226,6 @@ const DOC_CONTENT = {
         </div>
       </section>
 
-      <section class="valorant-section">
-        <div class="section-header"><h2>RANGO VANTS</h2></div>
-        <p class="section-lead">Ocho niveles, un recorrido por juego. Ganas VP por victoria, MVP y clutches; cada temporada conservas el 30% del VP acumulado.</p>
-        ${RANKS_STRIP}
-      </section>
 
       <section class="valorant-banner">
         <div class="banner-content">
@@ -313,47 +245,12 @@ const DOC_CONTENT = {
 
       <!-- Login Methods -->
       <section class="valorant-section">
-feat/diseno-premium
-        <div class="section-header">
-          <h2>INICIO DE SESIÓN</h2>
-        </div>
-        <div class="login-methods-home">
-          <a href="#/login" class="login-method-card">
-            <div class="login-method-icon discord-icon">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-            </div>
-            <h3>Discord</h3>
-            <p>Acceso con cuenta de Discord vía OAuth 2.0</p>
-          </a>
-          <a href="#/login" class="login-method-card">
-            <div class="login-method-icon google-icon">
-              <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
-            </div>
-            <h3>Google</h3>
-            <p>Entra con tu cuenta de Google en un clic</p>
-          </a>
-          <a href="#/login" class="login-method-card">
-            <div class="login-method-icon steam-icon">
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.98 0C5.67 0 .5 4.86 0 11.04l6.44 2.66a3.4 3.4 0 0 1 1.92-.59l.19.01 2.86-4.15v-.06a4.53 4.53 0 1 1 4.53 4.53h-.1l-4.08 2.91.01.16a3.4 3.4 0 0 1-6.73.68L.43 15.33A12 12 0 1 0 11.98 0zM7.54 18.21l-1.47-.61a2.55 2.55 0 1 0 1.4-3.5l1.52.63a1.88 1.88 0 0 1-1.45 3.48zm11.42-9.3a3.02 3.02 0 1 0-6.04 0 3.02 3.02 0 0 0 6.04 0zm-5.28-.01a2.27 2.27 0 1 1 4.54 0 2.27 2.27 0 0 1-4.54 0z"/></svg>
-            </div>
-            <h3>Steam</h3>
-            <p>Inicio con Steam verificado por OpenID</p>
-          </a>
-          <a href="#/registro" class="login-method-card">
-            <div class="login-method-icon github-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-            </div>
-            <h3>Correo</h3>
-            <p>Registro con correo y contraseña, verificación por email</p>
-          </a>
-
         <div class="section-header"><h2>ENTRA COMO QUIERAS</h2></div>
         <div class="login-methods-home login-methods-4">
           <a href="#/login" class="login-method-card"><div class="login-method-icon google-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.29 14.29A7.2 7.2 0 0 1 4.91 12c0-.8.14-1.57.38-2.29v-3.1H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.1z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.61l4.01 3.1C6.23 6.88 8.88 4.77 12 4.77z"/></svg></div><h3>Google</h3><p>Un clic con tu cuenta de Google</p></a>
           <a href="#/login" class="login-method-card"><div class="login-method-icon discord-icon">${DISCORD_SVG}</div><h3>Discord</h3><p>Tu perfil queda conectado al bot VANTS</p></a>
           <a href="#/login" class="login-method-card"><div class="login-method-icon steam-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.98 0C5.67 0 .5 4.86.02 11.04l6.43 2.66a3.38 3.38 0 0 1 1.92-.6l.19.01 2.86-4.15v-.06a4.52 4.52 0 1 1 4.52 4.52h-.1l-4.08 2.91v.16a3.39 3.39 0 0 1-6.72.63L.4 15.5A12 12 0 1 0 11.98 0z"/></svg></div><h3>Steam</h3><p>Ideal para CS2: cuenta verificada por Valve</p></a>
           <a href="#/registro" class="login-method-card"><div class="login-method-icon mail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div><h3>Correo</h3><p>Registro clásico con verificación por email</p></a>
-main
         </div>
       </section>
 
@@ -381,7 +278,6 @@ main
   'calendario': {
     title: 'Calendario — VANTCALL Esports',
     content: `
- feat/diseno-premium
       <h1>Calendario</h1>
       <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Calendario ${liveTag()}</p>
       <div class="cal-toolbar">
@@ -398,13 +294,6 @@ main
           <button type="button" class="calendar-filter" data-filter="tournament" role="tab" aria-selected="false"><span class="cal-dot cal-dot-tournament"></span>TORNEOS</button>
         </div>
 
-      ${pageHero('02', 'Calendario', 'Lo que se juega <span class="hero-accent">esta semana</span>', 'Partidas de torneo, scrims, streams y eventos de la comunidad en un solo lugar. Confirma tu asistencia y recibe el aviso en Discord.', '<span class="page-hero-chip">Usa /calendario en Discord</span>')}
-      <div class="calendar-filters" role="tablist">
-        <button class="calendar-filter active" data-filter="all">TODO</button>
-        <button class="calendar-filter" data-filter="match">PARTIDAS</button>
-        <button class="calendar-filter" data-filter="event">EVENTOS</button>
-        <button class="calendar-filter" data-filter="tournament">TORNEOS</button>
-main
       </div>
       <div class="auth-msg" data-page-msg role="status" aria-live="polite" hidden></div>
       <div class="cal-layout">
@@ -504,31 +393,16 @@ main
   'ranked': {
     title: 'Ranked — VANTCALL Esports',
     content: `
-      ${pageHero('03', 'Ranked VANTS', 'Sube de <span class="hero-accent">Hierro a Escarlata</span>', 'Cada partida mueve tu MMR. Ocho rangos, temporadas con recompensas y un leaderboard que se actualiza en tiempo real.', '<span class="page-hero-chip">Usa /ranking y /perfil en Discord</span>')}
+      ${pageHero('03', 'Ranked VANTS', 'Tu rango <span class="hero-accent">VALORANT</span> en la liga', 'Cada partida mueve tu MMR. El leaderboard muestra tu rango de VALORANT (Riot) y se actualiza en tiempo real.', '<span class="page-hero-chip">Usa /ranking y /perfil en Discord</span>')}
       <div class="dash-grid" data-async="ranked-season">${skeleton(1)}</div>
-      <h2>Rango VANTS</h2>
-      ${RANKS_STRIP}
       <h2>Leaderboard</h2>
       <div class="rankings-list rankings-full" data-async="ranked-lb">${skeleton(6)}</div>
       <h2>Reglas vigentes</h2>
       <div data-async="ranked-rules">${skeleton(2)}</div>
       <div class="bot-panel">
- feat/diseno-premium
-        <h3>Comandos del bot en Discord</h3>
-        <div class="bot-commands">
-          <div class="bot-cmd"><code>/perfil</code><span class="desc">Tu rango, MMR y plan</span></div>
-          <div class="bot-cmd"><code>/ranking</code><span class="desc">Top 10 de la temporada</span></div>
-          <div class="bot-cmd"><code>/torneos</code><span class="desc">Torneos abiertos</span></div>
-          <div class="bot-cmd"><code>/torneo inscribir</code><span class="desc">Inscribirte en un torneo</span></div>
-          <div class="bot-cmd"><code>/calendario</code><span class="desc">Próximos 7 días</span></div>
-          <div class="bot-cmd"><code>/vincular</code><span class="desc">Conectar Discord con la web</span></div>
-        </div>
-        <p class="login-note">Entra con Discord en la web para que el bot reconozca tu perfil. Los resultados y anuncios se publican automáticamente en los canales del servidor.</p>
-
         <h3>Comandos del bot VANTS en Discord</h3>
         <div class="bot-commands" data-async="bot-commands">${skeleton(2)}</div>
         <p class="login-note">Los comandos se gestionan desde Supabase y responden con tus datos reales de la web. Entra con Discord o vincúlalo en Mi cuenta para usarlos.</p>
- main
       </div>`,
     async load(main) {
       const DB = window.VantDB;

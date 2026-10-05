@@ -1,152 +1,225 @@
-# Arquitectura de VANTS (VantsportsOficial)
+# VANTS — Arquitectura del repositorio
 
-> Documento descriptivo basado en la lectura estática del commit `498435eb15b9784f70cb17d986b04562074e8618` (rama `main`). No se ejecutó la aplicación, el bot, las Edge Functions ni las migraciones. Lo que depende de configuración externa figura como *no determinable*.
+> Documento pensado para lectura rápida por humanos y bots. Los diagramas son Mermaid: GitHub los renderiza como imágenes.
 
-## 1. Alcance y estado de la organización
+## 1. Vista general del sistema
 
-- Esta revisión **no mueve ni renombra archivos**. El repositorio conserva su disposición original.
-- Motivo: el frontend se compone de scripts clásicos que comparten variables globales y un orden de carga; varios archivos contienen restos de integración de ramas; no hay pruebas ni forma de verificar el arranque antes y después de un traslado. Un movimiento no sería verificable (ver sección 9).
+```mermaid
+flowchart TB
+    subgraph Clients["Clientes"]
+        Browser["Navegador (SPA estática)"]
+        DiscordUsers["Usuarios de Discord"]
+        Agentvants["Agente n8n Agentvants"]
+    end
 
-## 2. Árbol del repositorio
+    subgraph Frontend["Frontend — GitHub (este repo)"]
+        Index["index.html"]
+        App["app.js — router SPA + vistas"]
+        Auth["auth.js — login/sesión"]
+        DBjs["db.js — capa de datos Supabase"]
+        Admin["admin.js — panel staff"]
+        Zona["zona.js — zona exclusiva"]
+        Ranks["ranks.js — emblemas de rango"]
+        Premium["premium.js / premium.css"]
+        Data["data.js — fallback estático"]
+        Styles["base.css / style.css / vip.css"]
+    end
 
-```text
-.
-├── README.md
-├── ARCHITECTURE.md
-├── index.html                 # documento y punto de entrada web
-├── app.js                     # router por hash y páginas públicas
-├── db.js                      # cliente Supabase y consultas (window.VantDB)
-├── auth.js                    # sesión, cuenta, Steam, checkout (window.VantAuth)
-├── admin.js                   # panel de administración (DOC_CONTENT['admin'])
-├── zona.js                    # zona por plan (DOC_CONTENT['zona'])
-├── ranks.js                   # emblemas SVG (window.VantsRanks / CommonJS)
-├── premium.js                 # efectos de presentación
-├── data.js                    # datos ficticios; no se carga desde index.html
-├── base.css  style.css  vip.css  premium.css
-├── config.toml                # verify_jwt de Edge Functions
-├── security_review_report.md  # informe previo (desactualizado, ver §8)
-├── .gitignore
-├── assets/
-│   ├── BRAND.md
-│   ├── banner-setup.jpg  hero-arena.jpg
-│   ├── brand/                 # logos, favicon, iconos, imagen social
-│   └── ranks/                 # 8 emblemas (.svg/.png) + rank-sheet.png
-├── vendor/
-│   └── supabase-2.57.4.min.js
-├── bot/
-│   ├── main.py                # bot gateway (discord.py)
-│   ├── register_commands.py   # registro HTTP de comandos slash
-│   ├── requirements.txt  .env.example  SETUP.md
-│   ├── commands/              # perfil.py, vincular.py
-│   └── utils/                 # health.py, supabase_client.py
-└── supabase/
-    ├── schema.sql  seed.sql
-    ├── functions/
-    │   ├── steam-login/index.ts
-    │   ├── discord-commands/index.ts
-    │   ├── discord-admin/index.ts
-    │   └── discord-notify/index.ts
-    └── migrations/
-        ├── 20261001040000_steam_login_and_plan_zone.sql
-        ├── 20261001050000_discord_notifications.sql
-        ├── 20261001_admin_bot_premium.sql
-        └── 20261001_owner_identities.sql
+    subgraph Supabase["Supabase — proyecto qtetsgwwsvqzquxssudj"]
+        Postgres[("PostgreSQL + RLS")]
+        AuthSVC["Auth (Google, Discord, Steam, email)"]
+        EdgeFx["Edge Functions (Deno)"]
+        Realtime["REST / Realtime API"]
+    end
+
+    subgraph Edge["Edge Functions"]
+        FxCmd["discord-commands — slash commands"]
+        FxNotify["discord-notify — webhooks a Discord"]
+        FxAdmin["discord-admin — registro de comandos"]
+        FxSteam["steam-login — OpenID de Steam"]
+    end
+
+    subgraph BotPy["Bot Python (bot/)"]
+        MainPy["main.py — discord.py"]
+        CmdPerfil["commands/perfil.py"]
+        CmdVincular["commands/vincular.py"]
+        Health["utils/health.py"]
+    end
+
+    subgraph External["Servicios externos"]
+        DiscordAPI["Discord API"]
+        RiotAPI["Riot Games API"]
+        Stripe["Stripe (pagos)"]
+    end
+
+    Browser --> Index --> App --> DBjs
+    App --> Auth
+    App --> Zona
+    Auth --> AuthSVC
+    DBjs --> Realtime --> Postgres
+    Admin --> Postgres
+    DiscordUsers -->|interactions| FxCmd
+    FxCmd --> Postgres
+    FxNotify --> DiscordAPI
+    FxAdmin --> DiscordAPI
+    FxSteam --> AuthSVC
+    MainPy --> Postgres
+    MainPy --> DiscordAPI
+    CmdPerfil --> Postgres
+    Agentvants -->|REST service_role| Postgres
+    Agentvants -->|lee/escribe| Frontend
+    Agentvants --> RiotAPI
+    Browser --> Stripe
 ```
 
-No existen en el árbol: `package.json`, archivos de bloqueo, `Dockerfile`, workflows de CI, pruebas ni `LICENSE`.
+## 2. Mapa del repositorio
 
-## 3. Lenguajes
+```mermaid
+flowchart LR
+    subgraph Root["/ (raíz — frontend estático)"]
+        A["index.html<br/>shell + nav + SEO"]
+        B["app.js (55KB)<br/>router hash + todas las vistas"]
+        C["auth.js (51KB)<br/>OAuth, sesión, perfiles"]
+        D["db.js<br/>VantDB: cliente Supabase + caché"]
+        E["admin.js (41KB)<br/>panel de administración"]
+        F["zona.js<br/>zona exclusiva por plan"]
+        G["ranks.js<br/>emblemas SVG de los 8 rangos"]
+        H["premium.js + premium.css<br/>landing de planes"]
+        I["data.js (32KB)<br/>contenido estático / fallback"]
+        J["base.css + style.css (60KB)<br/>+ vip.css (25KB)"]
+    end
 
-HTML, JavaScript (navegador y CommonJS en `ranks.js`), Python (bot), TypeScript/Deno (Edge Functions), SQL PostgreSQL, CSS, TOML, Markdown, SVG/PNG/JPEG.
+    subgraph Assets["assets/"]
+        K["brand/ — logos, favicons, og-image"]
+        L["ranks/ — 8 rangos en PNG + SVG"]
+        M["hero-arena.jpg, banner-setup.jpg"]
+    end
 
-## 4. Componentes
+    subgraph BotDir["bot/ — bot de Discord en Python"]
+        N["main.py — discord.py, tree de comandos"]
+        O["commands/perfil.py, vincular.py"]
+        P["register_commands.py — sync slash commands"]
+        Q["utils/ — health server + cliente Supabase"]
+    end
 
-| Componente | Archivos | Responsabilidad |
-|---|---|---|
-| Documento web | `index.html` | Estructura, navegación, contenedor `#main`, carga de scripts y estilos |
-| Aplicación | `app.js` | Router, páginas de inicio, calendario, ranked, torneos, jugadores y precios |
-| Datos | `db.js` | Cliente Supabase (PKCE), consultas y caché en memoria de 30 s |
-| Cuenta | `auth.js` | Correo/Discord/Google/Steam, perfil, checkout, inscripciones, RSVP, soporte |
-| Administración | `admin.js` | Nueve secciones; RPC `web_admin_role`, `admin_*`; invoca `discord-admin` |
-| Zona por plan | `zona.js` | Ventajas y torneos según BASIC/PRO/ELITE |
-| Presentación | `ranks.js`, `premium.js`, CSS, `assets/` | Emblemas, animaciones, temas |
-| Datos de demostración | `data.js` | Equipos, jugadores y torneos ficticios |
-| Bot gateway | `bot/main.py`, `commands/`, `utils/` | `/perfil`, `/vincular riot`, `/setup`, `/valorant ...`; healthcheck `GET /` |
-| Registro de comandos | `bot/register_commands.py` | `PUT` a Discord API v10 (reemplaza el catálogo completo) |
-| Edge Functions | `supabase/functions/*` | Steam OpenID, comandos Discord HTTP, administración del bot, notificaciones |
-| Base de datos | `supabase/*.sql` | Roles, planes, comandos, canales, outbox de eventos, triggers y cron |
+    subgraph SupaDir["supabase/"]
+        R["schema.sql — tablas base"]
+        S["seed.sql — datos iniciales"]
+        T["migrations/ — 4 migraciones"]
+        U["functions/ — 4 edge functions Deno"]
+    end
 
-## 5. Relaciones
-
-```text
-Navegador
- ├─ db.js → Supabase (Auth, tablas, RPC)
- ├─ auth.js → steam-login (Edge) ; enlaces de pago Stripe
- └─ admin.js → discord-admin (Edge) → Discord API
-
-Discord
- ├─ Gateway: bot/main.py → Supabase (service_role)
- └─ HTTP Interactions: discord-commands (firma Ed25519) → Supabase
-
-PostgreSQL
- └─ triggers → vant_sync_events → pg_net / cron (5 min) → discord-notify → Discord
+    Root --- Assets
+    Root -.->|lee/escribe vía REST| SupaDir
+    BotDir -.->|service key| SupaDir
 ```
 
-Orden de scripts en `index.html` (debe conservarse): `vendor/supabase` → `ranks.js` → `db.js` → `app.js` → `auth.js` → `zona.js` → `admin.js` → `premium.js`. Todos con `defer`, sin módulos ES. Los módulos comparten `DOC_CONTENT`, `esc`, `router`, `window.VantDB`, `window.VantAuth`, `window.VantsRanks`.
+## 3. Flujo de datos de la SPA
 
-Hay dos modalidades Discord independientes (gateway Python e Interactions HTTP). `bot/SETUP.md` indica que, al configurar el endpoint de interacciones, el proceso gateway deja de recibir comandos. Modalidad activa: *no determinable*.
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant SPA as app.js (router)
+    participant DB as db.js (VantDB)
+    participant AU as auth.js
+    participant SB as Supabase
 
-## 6. Puntos de entrada
+    U->>SPA: #/ranked
+    SPA->>AU: ¿sesión activa?
+    AU->>SB: getSession() (PKCE)
+    SPA->>DB: leaderboard(season, 50)
+    DB->>SB: GET /rest/v1/leaderboard (vista)
+    SB-->>DB: rows (players + season_player_stats)
+    DB-->>SPA: caché 30s
+    SPA-->>U: leaderboardRows() + rankBadge()
+```
 
-- **Web:** `index.html`; arranque en `app.js` con `DOMContentLoaded` y `hashchange`.
-- **Rutas hash:** `#/inicio`, `#/calendario`, `#/ranked`, `#/torneos`, `#/jugadores`, `#/precios`, `#/torneo/<slug>`, `#/jugador/<username>`, `#/login`, `#/registro`, `#/recuperar`, `#/nueva-contrasena`, `#/cuenta`, `#/checkout/<plan>`, `#/checkout/exito`, `#/zona`, `#/admin`.
-- **Bot gateway:** `python bot/main.py` (variables: `DISCORD_TOKEN`, `DISCORD_GUILD_ID`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PORT`).
-- **Registro de comandos:** `python bot/register_commands.py` (`DISCORD_TOKEN`, `DISCORD_APP_ID`, `DISCORD_GUILD_ID` opcional).
-- **Edge Functions (`Deno.serve`):** `steam-login` (GET/POST), `discord-commands` (POST), `discord-admin` (POST: `status`, `connect`, `sync`, `announce`), `discord-notify` (GET diagnóstico, POST entrega/reintento).
-- **SQL:** `schema.sql`, `seed.sql` y las cuatro migraciones.
+## 4. Base de datos (PostgreSQL + RLS)
 
-## 7. Dependencias
+```mermaid
+erDiagram
+    players ||--o{ season_player_stats : "tiene stats en"
+    seasons ||--o{ season_player_stats : "agrupa"
+    players ||--o{ tournament_entries : "se inscribe"
+    tournaments ||--o{ tournament_entries : "recibe"
+    tournaments ||--o{ matches : "genera"
+    players ||--o{ matches : "juega (p1/p2)"
+    players ||--o{ ranked_matches : "juega ranked"
+    players ||--|| profiles : "bio/redes"
+    players ||--o{ player_identities : "vínculos (Discord, Riot, Steam)"
+    bot_commands }o--|| plans : "min_plan"
+    events ||--o{ event_rsvps : "asistencias"
 
-| Ámbito | Dependencia |
-|---|---|
-| Navegador | `vendor/supabase-2.57.4.min.js`; fuentes de Google Fonts y Fontshare |
-| Edge Functions | `npm:@supabase/supabase-js@2`; `npm:tweetnacl@1.0.3` (`discord-commands`) |
-| Python | `discord.py>=2.3.2,<3`, `supabase>=2.4.0,<3`, `python-dotenv>=1.0.1,<2`, `aiohttp>=3.9.0,<4` |
-| Servicios | Supabase (Auth, PostgreSQL, Edge Functions, Vault), Discord API v10, Steam OpenID y API, Stripe (enlaces de pago), tracker.gg/ValoTracker (enlaces) |
-| PostgreSQL | `pg_net`, cron, Vault, generación de bytes aleatorios |
+    players {
+        uuid id PK
+        string username
+        string display_name
+        string region
+        boolean verified
+    }
+    season_player_stats {
+        uuid player_id FK
+        uuid season_id FK
+        int mmr
+        int wins
+        int losses
+        string rank
+    }
+    leaderboard_view {
+        note "VISTA: players + stats de temporada activa, ordenada por MMR. NO acepta INSERT."
+    }
+```
 
-Variables de Edge Functions: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `STEAM_WEB_API_KEY`, `STEAM_LOGIN_REDIRECTS`, `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN`/`DISCORD_TOKEN`, `VANTS_SITE_URL`, `VANTS_TZ`, `DISCORD_CHANNEL_*`, `DISCORD_WEBHOOK_*`. Los valores no se documentan aquí.
+**Tablas principales:** `players`, `seasons`, `season_player_stats`, `tournaments`, `tournament_entries`, `matches`, `ranked_matches`, `events`, `event_rsvps`, `profiles`, `player_identities`, `bot_commands`, `bot_admins`, `rules`.
+**Vista clave:** `leaderboard` (sólo lectura — la usan el home y la página Ranked).
+**RLS:** la clave `sb_publishable` (anon) sólo lee lo público; escrituras reales van con `service_role` (bot, edge functions, Agentvants).
 
-## 8. Inconsistencias conocidas (sin corregir)
+## 5. Edge Functions (supabase/functions/, Deno)
 
-1. Restos de ramas (`feat/diseno-premium`, `main`) y declaraciones duplicadas en `index.html`, `app.js`, `auth.js` y Edge Functions.
-2. `premium.css` contiene JavaScript de autenticación truncado, pero se carga como hoja de estilos.
-3. `config.toml` tiene `verify_jwt = false.` y la sección `steam-login` duplicada.
-4. `auth.js` invoca `unlink-steam`, que no existe en el árbol; `stripe-webhook` tampoco está (el README indica despliegue aparte).
-5. `schema.sql`/`seed.sql` no coinciden con las columnas consultadas por el frontend; el esquema completo no está versionado.
-6. `discord_channels` se define con categorías y restricciones distintas en `schema.sql` y en las migraciones.
-7. `bot/commands/perfil.py` envía la misma respuesta dos veces.
-8. `security_review_report.md` afirma que no hay backend, `requirements.txt` ni endpoints: no describe el estado actual.
-9. `.gitignore` no excluye `.env`.
-10. El README declara licencia MIT y enlaza `LICENSE`, que no existe.
-
-## 9. Reorganizaciones evaluadas y no aplicadas
-
-| Propuesta | Decisión | Razón |
+| Función | Trigger | Qué hace |
 |---|---|---|
-| Mover JS/CSS a `frontend/...` | No aplicada | Scripts clásicos con globales y orden de carga; la herramienta disponible no mueve archivos, solo crea/borra contenido completo, con riesgo de alterar archivos de 30–60 KB; no se puede comprobar el arranque antes/después |
-| Mover `data.js` a una carpeta demo | No aplicada | Posibles referencias no localizadas; sin verificación |
-| Mover `security_review_report.md` a `docs/` | No aplicada | Sin ganancia funcional; se conserva como evidencia con su ruta original |
-| Reordenar `bot/` o `supabase/` | No aplicada | Imports Python relativos a `bot/`; nombres de funciones y migraciones son contratos externos |
-| Editar `.gitignore`, `config.toml`, `premium.css`, README | No aplicada | Son correcciones de contenido, no reorganizaciones; requieren decisión del responsable |
+| `discord-commands` | POST desde Discord (interactions endpoint) | Ejecuta slash commands (`/perfil`, `/ranking`, `/torneos`, `/ayuda`…) contra la DB con service_role. Catálogo en `public.bot_commands`. |
+| `discord-notify` | Webhooks de base de datos | Envía embeds a Discord: registro de usuario, torneo publicado/inscripción/resultado, evento publicado. |
+| `discord-admin` | POST con token staff | Re-registra los slash commands en Discord según `bot_commands` (sync). |
+| `steam-login` | GET/POST flujo OpenID | Login con Steam → sesión Supabase Auth. |
 
-## 10. Información no determinable desde el repositorio
+## 6. Bot de Discord en Python (bot/)
 
-- Commit y configuración del despliegue de la beta publicada.
-- Esquema real de Supabase, migraciones aplicadas y políticas RLS efectivas.
-- Modalidad Discord activa y catálogo de comandos desplegado.
-- Proveedores OAuth habilitados y secretos configurados.
-- Implementación del webhook de Stripe y de `unlink-steam`.
-- Proceso que alimenta `valorant_stats` y `valorant_leaderboard_public`.
-- Versiones resueltas de dependencias Python y de Supabase JS en Edge Functions.
-- Resultados de ejecución o pruebas (no hay suite versionada).
+```mermaid
+flowchart LR
+    Main["main.py<br/>discord.py + CommandTree"] --> P1["/perfil → perfil_handler"]
+    Main --> P2["/vincular riot → vincular_riot_handler"]
+    Main --> H["utils/health.py<br/>HTTP /health (Railway)"]
+    Main --> S["utils/supabase_client.py<br/>service_role"]
+    P1 --> S
+    P2 --> S
+```
+
+- Desplegado fuera del repo estático (Railway, ver badge en README).
+- Variables: `DISCORD_TOKEN`, `DISCORD_GUILD_ID`, credenciales Supabase (`.env.example`).
+- `register_commands.py` sincroniza los slash commands con Discord.
+
+## 7. Integraciones externas y agentes
+
+```mermaid
+flowchart TB
+    subgraph n8n["n8n Cloud (vantcall.app.n8n.cloud)"]
+        WF1["Agentvants (chat + Discord)<br/>gpt-4o-mini vía Gateway credits"]
+        WF2["Agentvants — Error Notifier<br/>→ canal Discord «𝙼oderator"]
+    end
+    WF1 -->|Supabase REST service_role| DB[("PostgreSQL")]
+    WF1 -->|GitHub API| Repo["feispla/VantsportsOficial"]
+    WF1 -->|X-Riot-Token| Riot["Riot API (Américas)<br/>account lookup · leaderboard act V"]
+    WF2 --> Discord["Discord VANTS"]
+```
+
+- **Agentvants**: administra la web — lee código del repo, consulta/escribe Supabase, consulta la API de Riot (`riot_account_lookup`, `valorant_ranked` con act_id `8102cd81-43a0-d0d7-bd59-47b8fe9bed1b` — ACT V, cambiar el 14-oct-2026).
+- **Stripe**: checkout de planes BASIC/PRO/ELITE (enlaces `#/checkout/<plan>` en `planCards()`).
+
+## 8. Notas operativas para bots
+
+1. **`leaderboard` es una vista** — nunca hacer INSERT/UPDATE; escribir en `players` + `season_player_stats` de la temporada activa (`d3ffc87e-3178-4bd2-a33d-413a88b90b7b`, "TEMPORADA 2 VANTS").
+2. **Claves**: el frontend usa la anon key (RLS protege); escrituras administrativas requieren `service_role` (nunca en el repo).
+3. **Conflictos de merge**: `app.js` quedó limpio el 05-oct-2026 (commit `0a18202c`). `index.html` aún contiene marcadores `feat/diseno-premium`/`main` en el `<head>` (pendiente de resolver).
+4. **Vistas de la SPA**: `inicio`, `calendario`, `ranked`, `torneos`, `jugadores`, `jugador/:u`, `torneo/:slug`, `precios`, `vip` (router hash en `app.js`).
+5. **Caché**: `db.js` cachea consultas 30s en memoria — datos "en vivo" pero no instantáneos.

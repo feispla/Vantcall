@@ -9,6 +9,19 @@ from discord import app_commands
 
 from commands.perfil import perfil_handler
 from commands.vincular import vincular_riot_handler
+from commands.moderacion import (
+    warn_handler, kick_handler, ban_handler, mute_handler,
+    unmute_handler, clear_handler, lock_handler, unlock_handler,
+)
+from commands.analisis import (
+    stats_servidor_handler, stats_jugador_handler,
+    actividad_handler, top_handler,
+)
+from commands.informes import informe_semanal_handler, resumen_handler
+from commands.comunidad import (
+    anuncio_handler, evento_crear_handler,
+    torneo_crear_handler, recordatorio_handler,
+)
 from utils.health import start_health_server
 from utils.supabase_client import supabase
 
@@ -163,7 +176,6 @@ def _get_valorant_ranking() -> list[dict]:
 
 
 def _get_valorant_profile(discord_id: str) -> dict | None:
-    # Primero busca la vinculación en la tabla dedicada.
     links = (
         supabase.table("player_discord_accounts")
         .select("player_id")
@@ -176,7 +188,6 @@ def _get_valorant_profile(discord_id: str) -> dict | None:
 
     player_id = links[0]["player_id"] if links else None
 
-    # Compatibilidad con perfiles vinculados directamente en players.
     if not player_id:
         players = (
             supabase.table("players")
@@ -214,7 +225,6 @@ def _get_valorant_profile(discord_id: str) -> dict | None:
     if not players or not stats:
         return None
 
-    # La función devuelve la posición del jugador en el leaderboard.
     rank_response = supabase.rpc(
         "get_player_valorant_rank",
         {"p_player_id": player_id},
@@ -351,6 +361,121 @@ async def valorant_perfil(
 
 
 tree.add_command(valorant_group, guild=GUILD)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODERACIÓN
+# ─────────────────────────────────────────────────────────────────────────────
+@tree.command(guild=GUILD, name="warn", description="Advertir a un usuario")
+@app_commands.describe(usuario="Usuario a advertir", razon="Razón de la advertencia")
+async def warn_cmd(interaction: discord.Interaction, usuario: discord.Member, razon: str) -> None:
+    await warn_handler(interaction, usuario, razon)
+
+
+@tree.command(guild=GUILD, name="kick", description="Expulsar a un usuario del servidor")
+@app_commands.describe(usuario="Usuario a expulsar", razon="Razón")
+async def kick_cmd(interaction: discord.Interaction, usuario: discord.Member, razon: str) -> None:
+    await kick_handler(interaction, usuario, razon)
+
+
+@tree.command(guild=GUILD, name="ban", description="Banear a un usuario")
+@app_commands.describe(usuario="Usuario a banear", razon="Razón", borrar_dias="Días de mensajes a borrar (0-7)")
+async def ban_cmd(interaction: discord.Interaction, usuario: discord.Member, razon: str, borrar_dias: int = 0) -> None:
+    await ban_handler(interaction, usuario, razon, borrar_dias)
+
+
+@tree.command(guild=GUILD, name="mute", description="Silenciar a un usuario (timeout)")
+@app_commands.describe(usuario="Usuario a silenciar", minutos="Minutos de silencio", razon="Razón")
+async def mute_cmd(interaction: discord.Interaction, usuario: discord.Member, minutos: int, razon: str) -> None:
+    await mute_handler(interaction, usuario, minutos, razon)
+
+
+@tree.command(guild=GUILD, name="unmute", description="Quitar el silencio a un usuario")
+@app_commands.describe(usuario="Usuario a dessilenciar")
+async def unmute_cmd(interaction: discord.Interaction, usuario: discord.Member) -> None:
+    await unmute_handler(interaction, usuario)
+
+
+@tree.command(guild=GUILD, name="clear", description="Borrar mensajes del canal (máx 100)")
+@app_commands.describe(cantidad="Número de mensajes a borrar")
+async def clear_cmd(interaction: discord.Interaction, cantidad: int) -> None:
+    await clear_handler(interaction, cantidad)
+
+
+@tree.command(guild=GUILD, name="lock", description="Bloquear el canal actual (nadie escribe)")
+async def lock_cmd(interaction: discord.Interaction) -> None:
+    await lock_handler(interaction)
+
+
+@tree.command(guild=GUILD, name="unlock", description="Desbloquear el canal actual")
+async def unlock_cmd(interaction: discord.Interaction) -> None:
+    await unlock_handler(interaction)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ANÁLISIS
+# ─────────────────────────────────────────────────────────────────────────────
+@tree.command(guild=GUILD, name="stats_servidor", description="Estadísticas del servidor y la plataforma")
+async def stats_servidor_cmd(interaction: discord.Interaction) -> None:
+    await stats_servidor_handler(interaction)
+
+
+@tree.command(guild=GUILD, name="stats_jugador", description="Estadísticas VANTS de un jugador")
+@app_commands.describe(usuario="Jugador a consultar (opcional, por defecto tú)")
+async def stats_jugador_cmd(interaction: discord.Interaction, usuario: discord.User | None = None) -> None:
+    await stats_jugador_handler(interaction, usuario)
+
+
+@tree.command(guild=GUILD, name="actividad", description="Mensajes por canal en los últimos días")
+@app_commands.describe(dias="Días a analizar (por defecto 7)")
+async def actividad_cmd(interaction: discord.Interaction, dias: int = 7) -> None:
+    await actividad_handler(interaction, dias)
+
+
+@tree.command(guild=GUILD, name="top", description="Top 10 miembros más activos")
+@app_commands.describe(dias="Días a analizar (por defecto 7)")
+async def top_cmd(interaction: discord.Interaction, dias: int = 7) -> None:
+    await top_handler(interaction, dias)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INFORMES
+# ─────────────────────────────────────────────────────────────────────────────
+@tree.command(guild=GUILD, name="informe", description="Informe semanal de VANTCALL")
+async def informe_cmd(interaction: discord.Interaction) -> None:
+    await informe_semanal_handler(interaction)
+
+
+@tree.command(guild=GUILD, name="resumen", description="Resumen actual de la plataforma")
+async def resumen_cmd(interaction: discord.Interaction) -> None:
+    await resumen_handler(interaction)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COMUNIDAD
+# ─────────────────────────────────────────────────────────────────────────────
+@tree.command(guild=GUILD, name="anuncio", description="Publicar un anuncio en #anuncios")
+@app_commands.describe(titulo="Título del anuncio", mensaje="Contenido", imagen="URL de imagen (opcional)")
+async def anuncio_cmd(interaction: discord.Interaction, titulo: str, mensaje: str, imagen: str | None = None) -> None:
+    await anuncio_handler(interaction, titulo, mensaje, imagen)
+
+
+@tree.command(guild=GUILD, name="evento_crear", description="Crear un evento en la plataforma")
+@app_commands.describe(titulo="Título", tipo="Tipo (torneo, evento, scrim)", fecha="YYYY-MM-DD o YYYY-MM-DD HH:MM", descripcion="Descripción (opcional)")
+async def evento_crear_cmd(interaction: discord.Interaction, titulo: str, tipo: str, fecha: str, descripcion: str | None = None) -> None:
+    await evento_crear_handler(interaction, titulo, tipo, fecha, descripcion)
+
+
+@tree.command(guild=GUILD, name="torneo_crear", description="Crear un torneo")
+@app_commands.describe(nombre="Nombre del torneo", formato="single_elimination, double_elimination, round_robin", fecha_inicio="YYYY-MM-DD", max_participantes="Máximo de jugadores")
+async def torneo_crear_cmd(interaction: discord.Interaction, nombre: str, formato: str, fecha_inicio: str, max_participantes: int = 16) -> None:
+    await torneo_crear_handler(interaction, nombre, formato, fecha_inicio, max_participantes)
+
+
+@tree.command(guild=GUILD, name="recordatorio", description="Programar un recordatorio en este canal")
+@app_commands.describe(mensaje="Mensaje del recordatorio", minutos="En cuántos minutos")
+async def recordatorio_cmd(interaction: discord.Interaction, mensaje: str, minutos: int) -> None:
+    await recordatorio_handler(interaction, mensaje, minutos)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
