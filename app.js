@@ -26,14 +26,56 @@ function rankFor(stat) {
   for (const x of VANTS_RANKS) if ((stat.mmr || 0) >= x.min) r = x;
   return r;
 }
+// Emblemas de rango VANTS: cada nivel añade un elemento (chevrones → alas → gema → corona → halo)
+const RANK_SHADES = {
+  hierro: ['#c3c8cf', '#5d636b', '#2b2f35'], bronce: ['#f1b07a', '#b87333', '#4f2a10'], plata: ['#ffffff', '#b9c3cc', '#4f5a65'],
+  oro: ['#fff0b3', '#e5b93c', '#7a5408'], platino: ['#b8fff6', '#2ec4b6', '#0b4f49'], diamante: ['#e3d4ff', '#9b6bff', '#3a1f7a'],
+  titan: ['#c9ffe1', '#3ddc84', '#0d5a32'], escarlata: ['#ffd0a1', '#ff4655', '#5a0a14'],
+};
+function rankEmblem(r, size = 64) {
+  const i = VANTS_RANKS.indexOf(r);
+  const [hi, mid, lo] = RANK_SHADES[r.key] || ['#fff', r.color, '#000'];
+  const id = 're-' + r.key;
+  const chevrons = Math.min(3, (i % 3) + 1);
+  const wings = i >= 3;
+  const gem = i >= 5;
+  const crown = i >= 6;
+  const halo = i === 7;
+  let chev = '';
+  for (let c = 0; c < chevrons; c++) {
+    const y = 40 + c * 7 - (chevrons - 1) * 3.5;
+    chev += `<path d="M24 ${y} L32 ${y + 6} L40 ${y}" fill="none" stroke="url(#${id}-l)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  return `<svg class="rank-emblem-svg" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true">
+    <defs>
+      <linearGradient id="${id}-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mid}"/><stop offset="1" stop-color="${lo}"/></linearGradient>
+      <linearGradient id="${id}-l" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${hi}"/><stop offset="1" stop-color="${mid}"/></linearGradient>
+      <radialGradient id="${id}-g" cx=".5" cy=".45" r=".55"><stop offset="0" stop-color="${mid}" stop-opacity=".55"/><stop offset="1" stop-color="${mid}" stop-opacity="0"/></radialGradient>
+    </defs>
+    ${halo ? `<circle cx="32" cy="32" r="30" fill="url(#${id}-g)"/><path d="M32 2 L35 9 L32 7 L29 9 Z M10 14 L16 17 L13 19 Z M54 14 L48 17 L51 19 Z" fill="${hi}" opacity=".9"/>` : ''}
+    ${wings ? `<path d="M14 24 L2 20 L7 30 L3 36 L13 36 Z" fill="url(#${id}-l)" opacity=".85"/><path d="M50 24 L62 20 L57 30 L61 36 L51 36 Z" fill="url(#${id}-l)" opacity=".85"/>` : ''}
+    <path d="M32 6 L50 14 L50 34 C50 45 42 53 32 58 C22 53 14 45 14 34 L14 14 Z" fill="url(#${id}-f)" stroke="url(#${id}-l)" stroke-width="2"/>
+    <path d="M32 10 L46 16.5 L46 33.5 C46 42 40 48.5 32 52.5 C24 48.5 18 42 18 33.5 L18 16.5 Z" fill="none" stroke="${hi}" stroke-opacity=".28" stroke-width="1"/>
+    ${gem ? `<path d="M32 18 L38 24 L32 32 L26 24 Z" fill="url(#${id}-l)"/><path d="M26 24 L38 24 L32 32 Z" fill="${lo}" opacity=".35"/>` : `<path d="M32 17 L35 22 L32 27 L29 22 Z" fill="url(#${id}-l)" opacity=".9"/>`}
+    ${chev}
+    ${crown ? `<path d="M22 8 L26 2 L29 6 L32 0 L35 6 L38 2 L42 8 Z" fill="url(#${id}-l)"/>` : ''}
+  </svg>`;
+}
 function rankBadge(stat) {
   const r = rankFor(stat);
+ feat/diseno-premium
+  const label = stat && stat.placement_done === false ? 'Placement' : (stat && stat.rank ? stat.rank : r.name);
+  return `<span class="rank-badge rank-${r.key}" style="--rank:${r.color}">${rankEmblem(r, 22)}${esc(label)}</span>`;
+
   const icon = window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-badge-emblem') : '<span class="rank-gem"></span>';
   return `<span class="rank-badge" style="--rank:${r.color}">${icon}${esc(stat && stat.rank ? stat.rank : r.name)}</span>`;
+ main
 }
 
 const fmtDate = (d, opts) => d ? new Date(d).toLocaleDateString('es-ES', opts || { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
+// Clave de día en la zona horaria del visitante (antes se usaba UTC y los eventos nocturnos caían en el día siguiente)
+const localDayKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
 const fmtDay = (d) => new Date(d).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
 const initials = (s) => esc(String(s || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || '?');
 
@@ -126,13 +168,24 @@ function eventRow(e) {
 function groupByDay(items, dateKey) {
   const groups = new Map();
   for (const it of items) {
-    const d = new Date(it[dateKey]);
-    const k = d.toISOString().slice(0, 10);
+    const k = localDayKey(it[dateKey]);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(it);
   }
   return [...groups.entries()];
 }
+
+feat/diseno-premium
+const RANKS_STRIP = `<div class="ranks-ladder">${VANTS_RANKS.map((r, i) => {
+  const next = VANTS_RANKS[i + 1];
+  return `<div class="rank-tile rank-${r.key}${i === 7 ? ' is-apex' : i >= 5 ? ' is-high' : ''}" style="--rank:${r.color}">
+    <span class="rank-tier-num">${String(i + 1).padStart(2, '0')}</span>
+    <div class="rank-emblem">${rankEmblem(r, 72)}</div>
+    <div class="rank-name">${r.name}</div>
+    <div class="rank-min">${i === 7 ? r.min + '+ MMR · Top global' : `${r.min}–${next.min - 1} MMR`}</div>
+    <div class="rank-bar" aria-hidden="true"><span style="width:${Math.round(((i + 1) / VANTS_RANKS.length) * 100)}%"></span></div>
+  </div>`;
+}).join('')}</div>`;
 
 const RANKS_STRIP = `<div class="ranks-strip">${VANTS_RANKS.map((r, i) => `
   <div class="rank-tile${i >= 5 ? ' rank-tile-elite' : ''}${i === 7 ? ' rank-tile-apex' : ''}" style="--rank:${r.color}">
@@ -140,8 +193,51 @@ const RANKS_STRIP = `<div class="ranks-strip">${VANTS_RANKS.map((r, i) => `
     <div class="rank-emblem">${window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-svg') : ''}</div>
     <div class="rank-name">${r.name}</div><div class="rank-min">${i === 7 ? 'Top global' : r.min + '+ MMR'}</div>
   </div>`).join('')}</div>`;
+main
 
 const DISCORD_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>';
+
+
+// ============================================
+// PLANES (bloque compartido Inicio + Precios)
+// ============================================
+const PLAN_CARDS = [
+  { key: 'basic', name: 'BASIC', tier: 'T1', price: 9, emblem: 'plata', tag: 'Para empezar a competir', pitch: 'Tu pase a la escena: torneos abiertos, perfil Ranked y la comunidad VANTS.',
+    features: ['Inscripción a VANT Open', 'Perfil Ranked (Bronce–Oro)', 'Zona exclusiva BASIC', 'Rol BASIC en Discord', 'Soporte estándar'], cta: 'Empezar con BASIC' },
+  { key: 'pro', name: 'PRO', tier: 'T2', price: 19, emblem: 'diamante', tag: 'El favorito de los equipos', pitch: 'Ranked completo, Pro Series y scrims privadas para subir de nivel cada semana.', badge: 'MÁS POPULAR',
+    features: ['Todo lo de BASIC', 'VANT Pro Series', 'Sala privada y scrims', 'Prioridad en tryouts', 'Rol Operator en Discord', 'Soporte prioritario'], cta: 'Quiero PRO' },
+  { key: 'elite', name: 'ELITE', tier: 'T3', price: 39, emblem: 'escarlata', tag: 'Acceso total', pitch: 'Elite Invitational, canal Command y tu marca visible en todo el Ranked.', badge: 'ACCESO TOTAL',
+    features: ['Todo lo de PRO', 'VANT Elite Invitational', 'Canal Command con el staff', 'Badge Elite en tu perfil', 'Verificación prioritaria', 'Acceso anticipado a novedades'], cta: 'Ser ELITE' },
+];
+const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+function planCards() {
+  return `<div class="vp-grid">${PLAN_CARDS.map((p) => `
+    <article class="vp-card vp-${p.key}${p.key === 'pro' ? ' vp-featured' : ''}">
+      <div class="vp-glow" aria-hidden="true"></div>
+      ${p.badge ? `<div class="vp-badge">${p.badge}</div>` : ''}
+      <header class="vp-head">
+        <img class="vp-emblem" src="./assets/ranks/${p.emblem}.png" alt="" width="64" height="64" loading="lazy">
+        <div><div class="vp-tier">${p.tier} · VANT</div><h3 class="vp-name">${p.name}</h3><div class="vp-tag">${p.tag}</div></div>
+      </header>
+      <div class="vp-price"><span class="vp-cur">€</span><span class="vp-num">${p.price}</span><span class="vp-per">pago único<br>toda la temporada</span></div>
+      <p class="vp-pitch">${p.pitch}</p>
+      <ul class="vp-features">${p.features.map((f) => `<li>${CHECK_SVG}<span>${f}</span></li>`).join('')}</ul>
+      <a href="#/checkout/${p.key}" class="btn ${p.key === 'basic' ? 'btn-secondary' : p.key === 'pro' ? 'btn-primary' : 'btn-gold'} vp-btn">${p.cta}</a>
+      <div class="vp-foot">IVA incluido · Activación automática</div>
+    </article>`).join('')}</div>
+    <div class="vp-trust">
+      <span>${CHECK_SVG} Pago seguro con Stripe</span><span>${CHECK_SVG} Plan activo al instante en tu cuenta</span><span>${CHECK_SVG} Sin suscripción ni cargos ocultos</span><span>${CHECK_SVG} Ventajas sincronizadas con Discord</span>
+    </div>`;
+}
+
+function pageHero(num, kicker, title, lead, extra = '') {
+  return `<header class="page-hero">
+    <div class="page-hero-kicker"><span class="page-hero-num">${num}</span>${kicker}</div>
+    <h1>${title}</h1>
+    <p class="page-hero-lead">${lead}</p>
+    <div class="page-hero-meta">${liveTag()}${extra}</div>
+  </header>`;
+}
 
 // ============================================
 // PÁGINAS
@@ -157,13 +253,17 @@ const DOC_CONTENT = {
         <div class="hero-grid" aria-hidden="true"></div>
         <div class="hero-badge"><span class="live-dot"></span> BETA ABIERTA · VALORANT · CS2 · LOL</div>
         <h1>VANT<span class="hero-accent">CALL</span></h1>
-        <p class="hero-tagline">Ranked, torneos y eventos con datos reales. Inicia sesión con Discord o con tu correo y compite en la plataforma.</p>
+ feat/diseno-premium
+        <p class="hero-tagline">Ranked, torneos y eventos con datos reales. Entra con Discord, Google, Steam o tu correo y compite en la plataforma.</p>
+=======
+        <p class="hero-tagline">La liga competitiva de la comunidad: ranked con MMR real, torneos con premios y un bot de Discord conectado a tu perfil. Entra con Google, Discord, Steam o correo.</p>
+ main
         <div class="hero-cta">
           <a href="#/login" class="btn btn-primary btn-lg" data-auth-cta>JUGAR GRATIS</a>
           <a href="#/torneos" class="btn btn-secondary btn-lg">VER TORNEOS</a>
         </div>
         <div class="hero-meta" aria-label="Lo que incluye VANTS">
-          <span>Ranked VANTS</span><span>Torneos y ligas</span><span>Bot de Discord</span><span>Pagos con Stripe</span>
+          <span>Ranked con MMR</span><span>Torneos con premio</span><span>Bot de Discord en vivo</span><span>Zona exclusiva para miembros</span>
         </div>
         <span class="hero-scroll" aria-hidden="true"></span>
       </section>
@@ -197,76 +297,23 @@ const DOC_CONTENT = {
 
       <section class="valorant-banner">
         <div class="banner-content">
-          <h2>ÚNETE AL DISCORD</h2>
-          <p>Avisos oficiales, salas de VALORANT y CS2, postulaciones y el bot de VANTCALL sincronizado con la web.</p>
+          <h2>EL SERVIDOR DONDE PASA TODO</h2>
+          <p>Anuncios de torneos al instante, salas de voz para VALORANT y CS2, tryouts y el bot VANTS: usa /perfil, /ranking o /torneos y mira tus datos de la web en Discord.</p>
           <a href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg">ENTRAR AL SERVIDOR</a>
         </div>
       </section>
 
       <!-- Pricing Preview -->
       <section class="valorant-section valorant-pricing">
-        <div class="section-header">
-          <h2>PLANES</h2>
-        </div>
-        <div class="pricing-grid">
-          <div class="pricing-card pricing-tier-1">
-            <div class="pricing-tier-tag">T1 · DISPONIBLE</div>
-            <h3 class="pricing-tier-name">VANT BASIC</h3>
-            <p class="pricing-desc">Acceso comunitario, 1 entrada a torneos abiertos y perfil Ranked.</p>
-            <div class="pricing-price-line">
-              <span class="pricing-price-num">€9</span>
-              <span class="pricing-price-type">PAGO ÚNICO</span>
-            </div>
-            <ul class="pricing-features">
-              <li>Ticket BASIC de por vida en esta temporada</li>
-              <li>Inscripción a VANT Open</li>
-              <li>Perfil Ranked (Bronze-Gold)</li>
-              <li>Soporte estándar</li>
-            </ul>
-            <a href="#/checkout/basic" class="btn btn-secondary pricing-btn">COMPRAR</a>
-          </div>
-          <div class="pricing-card pricing-tier-2 pricing-featured">
-            <div class="pricing-badge">MÁS POPULAR</div>
-            <div class="pricing-tier-tag">T2 · DISPONIBLE</div>
-            <h3 class="pricing-tier-name">VANT PRO</h3>
-            <p class="pricing-desc">Ranked completo, Pro Series y prioridad de tryouts.</p>
-            <div class="pricing-price-line">
-              <span class="pricing-price-num">€19</span>
-              <span class="pricing-price-type">PAGO ÚNICO</span>
-            </div>
-            <ul class="pricing-features">
-              <li>Todo BASIC</li>
-              <li>VANT Pro Series</li>
-              <li>Sala privada / scrims</li>
-              <li>Prioridad en tryouts</li>
-              <li>Rol Operator equivalente</li>
-            </ul>
-            <a href="#/checkout/pro" class="btn btn-primary pricing-btn">COMPRAR</a>
-          </div>
-          <div class="pricing-card pricing-tier-3 pricing-elite">
-            <div class="pricing-badge pricing-badge-elite">ELITE</div>
-            <div class="pricing-tier-tag">T3 · DISPONIBLE</div>
-            <h3 class="pricing-tier-name">VANT ELITE</h3>
-            <p class="pricing-desc">Elite Invitational, cupo Command y marca visible en Ranked.</p>
-            <div class="pricing-price-line">
-              <span class="pricing-price-num">€39</span>
-              <span class="pricing-price-type">PAGO ÚNICO</span>
-            </div>
-            <ul class="pricing-features">
-              <li>Todo PRO</li>
-              <li>VANT Elite Invitational</li>
-              <li>Badge Elite en perfil</li>
-              <li>Canal Command</li>
-              <li>Revisión de verificación prioritaria</li>
-            </ul>
-            <a href="#/checkout/elite" class="btn btn-secondary pricing-btn">COMPRAR</a>
-          </div>
-        </div>
-        <p class="pricing-note" style="text-align:center; margin-top: var(--space-6);">El pago se confirma por webhook de Stripe, no por el redirect del navegador. PayPal aparece en Checkout si está activo en tu cuenta Stripe.</p>
+        <div class="section-header"><h2>ELIGE TU PLAN</h2></div>
+        <p class="section-lead">Un pago por temporada. Desbloquea torneos privados, scrims, roles en Discord y tu zona exclusiva.</p>
+        ${planCards()}
+        <p class="pricing-note" style="text-align:center; margin-top: var(--space-6);"><a href="#/precios" class="link-inline">Ver la comparativa completa</a></p>
       </section>
 
       <!-- Login Methods -->
       <section class="valorant-section">
+feat/diseno-premium
         <div class="section-header">
           <h2>INICIO DE SESIÓN</h2>
         </div>
@@ -278,20 +325,35 @@ const DOC_CONTENT = {
             <h3>Discord</h3>
             <p>Acceso con cuenta de Discord vía OAuth 2.0</p>
           </a>
-          <a href="#/registro" class="login-method-card">
+          <a href="#/login" class="login-method-card">
             <div class="login-method-icon google-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+            </div>
+            <h3>Google</h3>
+            <p>Entra con tu cuenta de Google en un clic</p>
+          </a>
+          <a href="#/login" class="login-method-card">
+            <div class="login-method-icon steam-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.98 0C5.67 0 .5 4.86 0 11.04l6.44 2.66a3.4 3.4 0 0 1 1.92-.59l.19.01 2.86-4.15v-.06a4.53 4.53 0 1 1 4.53 4.53h-.1l-4.08 2.91.01.16a3.4 3.4 0 0 1-6.73.68L.43 15.33A12 12 0 1 0 11.98 0zM7.54 18.21l-1.47-.61a2.55 2.55 0 1 0 1.4-3.5l1.52.63a1.88 1.88 0 0 1-1.45 3.48zm11.42-9.3a3.02 3.02 0 1 0-6.04 0 3.02 3.02 0 0 0 6.04 0zm-5.28-.01a2.27 2.27 0 1 1 4.54 0 2.27 2.27 0 0 1-4.54 0z"/></svg>
+            </div>
+            <h3>Steam</h3>
+            <p>Inicio con Steam verificado por OpenID</p>
+          </a>
+          <a href="#/registro" class="login-method-card">
+            <div class="login-method-icon github-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
             </div>
             <h3>Correo</h3>
             <p>Registro con correo y contraseña, verificación por email</p>
           </a>
-          <a href="#/precios" class="login-method-card">
-            <div class="login-method-icon github-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-            </div>
-            <h3>Planes</h3>
-            <p>BASIC, PRO y ELITE se asignan a tu cuenta al pagar con Stripe</p>
-          </a>
+
+        <div class="section-header"><h2>ENTRA COMO QUIERAS</h2></div>
+        <div class="login-methods-home login-methods-4">
+          <a href="#/login" class="login-method-card"><div class="login-method-icon google-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.29 14.29A7.2 7.2 0 0 1 4.91 12c0-.8.14-1.57.38-2.29v-3.1H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.1z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.61l4.01 3.1C6.23 6.88 8.88 4.77 12 4.77z"/></svg></div><h3>Google</h3><p>Un clic con tu cuenta de Google</p></a>
+          <a href="#/login" class="login-method-card"><div class="login-method-icon discord-icon">${DISCORD_SVG}</div><h3>Discord</h3><p>Tu perfil queda conectado al bot VANTS</p></a>
+          <a href="#/login" class="login-method-card"><div class="login-method-icon steam-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.98 0C5.67 0 .5 4.86.02 11.04l6.43 2.66a3.38 3.38 0 0 1 1.92-.6l.19.01 2.86-4.15v-.06a4.52 4.52 0 1 1 4.52 4.52h-.1l-4.08 2.91v.16a3.39 3.39 0 0 1-6.72.63L.4 15.5A12 12 0 1 0 11.98 0z"/></svg></div><h3>Steam</h3><p>Ideal para CS2: cuenta verificada por Valve</p></a>
+          <a href="#/registro" class="login-method-card"><div class="login-method-icon mail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div><h3>Correo</h3><p>Registro clásico con verificación por email</p></a>
+main
         </div>
       </section>
 
@@ -319,49 +381,130 @@ const DOC_CONTENT = {
   'calendario': {
     title: 'Calendario — VANTCALL Esports',
     content: `
+ feat/diseno-premium
       <h1>Calendario</h1>
       <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Calendario ${liveTag()}</p>
+      <div class="cal-toolbar">
+        <div class="cal-nav">
+          <button type="button" class="cal-nav-btn" data-cal-prev aria-label="Mes anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <h2 class="cal-month" data-cal-title aria-live="polite">—</h2>
+          <button type="button" class="cal-nav-btn" data-cal-next aria-label="Mes siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></button>
+          <button type="button" class="btn btn-secondary btn-sm" data-cal-today>Hoy</button>
+        </div>
+        <div class="calendar-filters" role="tablist" aria-label="Filtrar calendario">
+          <button type="button" class="calendar-filter active" data-filter="all" role="tab" aria-selected="true">TODO</button>
+          <button type="button" class="calendar-filter" data-filter="match" role="tab" aria-selected="false"><span class="cal-dot cal-dot-match"></span>PARTIDAS</button>
+          <button type="button" class="calendar-filter" data-filter="event" role="tab" aria-selected="false"><span class="cal-dot cal-dot-event"></span>EVENTOS</button>
+          <button type="button" class="calendar-filter" data-filter="tournament" role="tab" aria-selected="false"><span class="cal-dot cal-dot-tournament"></span>TORNEOS</button>
+        </div>
+
+      ${pageHero('02', 'Calendario', 'Lo que se juega <span class="hero-accent">esta semana</span>', 'Partidas de torneo, scrims, streams y eventos de la comunidad en un solo lugar. Confirma tu asistencia y recibe el aviso en Discord.', '<span class="page-hero-chip">Usa /calendario en Discord</span>')}
       <div class="calendar-filters" role="tablist">
         <button class="calendar-filter active" data-filter="all">TODO</button>
         <button class="calendar-filter" data-filter="match">PARTIDAS</button>
         <button class="calendar-filter" data-filter="event">EVENTOS</button>
         <button class="calendar-filter" data-filter="tournament">TORNEOS</button>
+main
       </div>
       <div class="auth-msg" data-page-msg role="status" aria-live="polite" hidden></div>
-      <div data-async="calendar">${skeleton(5)}</div>`,
+      <div class="cal-layout">
+        <div class="cal-grid-wrap" data-cal-grid>${skeleton(5)}</div>
+        <div class="cal-agenda">
+          <div class="cal-agenda-head"><h3 data-cal-agenda-title>Próximos</h3><button type="button" class="link-btn" data-cal-clear hidden>Ver todo el mes</button></div>
+          <div data-async="calendar">${skeleton(4)}</div>
+        </div>
+      </div>
+      <p class="login-note cal-tz">Horas mostradas en tu zona horaria (${esc(Intl.DateTimeFormat().resolvedOptions().timeZone || 'local')}).</p>`,
     async load(main) {
       const DB = window.VantDB;
       const box = main.querySelector('[data-async="calendar"]');
+      const grid = main.querySelector('[data-cal-grid]');
+      const titleEl = main.querySelector('[data-cal-title]');
+      const agendaTitle = main.querySelector('[data-cal-agenda-title]');
+      const clearBtn = main.querySelector('[data-cal-clear]');
+      const tournamentRow = (t) => `<div class="match-card cal-tournament"><div class="match-time">${fmtTime(t.starts_at)}</div><div class="event-body"><div class="event-title">Inicio: ${esc(t.name)}</div><div class="event-sub">${esc(statusLabel(t.format) || 'Torneo')}${t.max_participants ? ` · ${t.current_participants || 0}/${t.max_participants} plazas` : ''}</div></div><div class="match-format">${statusPill(t.status)}<a class="btn btn-secondary btn-sm" href="#/torneo/${encodeURIComponent(t.slug)}">Ver</a></div></div>`;
+      let items = [];
       try {
         const [matches, events, tournaments] = await Promise.all([DB.scheduledMatches(), DB.events(), DB.tournaments()]);
-        const items = [
-          ...matches.map((m) => ({ kind: 'match', at: m.scheduled_at, html: matchRow(m) })),
-          ...events.filter((e) => e.starts_at).map((e) => ({ kind: 'event', at: e.starts_at, html: eventRow(e) })),
-          ...tournaments.filter((t) => t.starts_at).map((t) => ({ kind: 'tournament', at: t.starts_at, html: `<div class="match-card"><div class="match-time">${fmtTime(t.starts_at)}</div><div class="event-body"><div class="event-title">Inicio: ${esc(t.name)}</div><div class="event-sub">${esc(t.format || '')}</div></div><div class="match-format">${statusPill(t.status)}<a class="btn btn-secondary btn-sm" href="#/torneo/${encodeURIComponent(t.slug)}">Ver</a></div></div>` })),
+        items = [
+          ...matches.filter((m) => m.scheduled_at).map((m) => ({ kind: 'match', at: m.scheduled_at, label: `${(m.p1 && (m.p1.display_name || m.p1.username)) || 'TBD'} vs ${(m.p2 && (m.p2.display_name || m.p2.username)) || 'TBD'}`, html: matchRow(m) })),
+          ...events.filter((e) => e.starts_at && e.status !== 'cancelled').map((e) => ({ kind: 'event', at: e.starts_at, label: e.title, html: eventRow(e) })),
+          ...tournaments.filter((t) => t.starts_at && t.status !== 'draft').map((t) => ({ kind: 'tournament', at: t.starts_at, label: t.name, html: tournamentRow(t) })),
         ].sort((a, b) => new Date(a.at) - new Date(b.at));
-        const render = (f) => {
-          const list = items.filter((i) => f === 'all' || i.kind === f);
-          if (!list.length) { box.innerHTML = emptyState('Calendario vacío', 'No hay partidas, eventos ni torneos programados todavía.'); return; }
-          const today = new Date().toISOString().slice(0, 10);
-          box.innerHTML = groupByDay(list, 'at').map(([k, arr]) => `
-            <div class="match-day"><div class="match-day-header"><span class="match-day-date">${fmtDay(arr[0].at)}</span>${k === today ? '<span class="match-day-badge">HOY</span>' : ''}</div>
-            ${arr.map((i) => i.html).join('')}</div>`).join('');
-          bindRsvp(main);
-        };
-        render('all');
-        main.querySelectorAll('.calendar-filter').forEach((b) => b.addEventListener('click', () => {
-          main.querySelectorAll('.calendar-filter').forEach((x) => x.classList.remove('active'));
-          b.classList.add('active'); render(b.dataset.filter);
-        }));
-      } catch (e) { box.innerHTML = errorState(e); }
+      } catch (e) { grid.innerHTML = ''; box.innerHTML = errorState(e); return; }
+
+      const now = new Date();
+      // Arranca en el mes del próximo elemento si el actual está vacío
+      const nextUp = items.find((i) => new Date(i.at) >= new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+      let view = nextUp ? new Date(new Date(nextUp.at).getFullYear(), new Date(nextUp.at).getMonth(), 1) : new Date(now.getFullYear(), now.getMonth(), 1);
+      if (!items.some((i) => { const d = new Date(i.at); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }) && !nextUp) view = new Date(now.getFullYear(), now.getMonth(), 1);
+      let filter = 'all';
+      let selectedDay = null;
+      const todayKey = localDayKey(now);
+      const MONTH = (d) => { const t = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }); return t.charAt(0).toUpperCase() + t.slice(1); };
+
+      const visible = () => items.filter((i) => filter === 'all' || i.kind === filter);
+      const renderGrid = () => {
+        titleEl.textContent = MONTH(view);
+        const first = new Date(view.getFullYear(), view.getMonth(), 1);
+        const offset = (first.getDay() + 6) % 7; // semana empieza en lunes
+        const days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+        const byDay = new Map();
+        for (const i of visible()) { const k = localDayKey(i.at); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(i); }
+        const cells = [];
+        for (let i = 0; i < offset; i++) cells.push('<div class="cal-cell is-pad" aria-hidden="true"></div>');
+        for (let d = 1; d <= days; d++) {
+          const k = localDayKey(new Date(view.getFullYear(), view.getMonth(), d));
+          const list = byDay.get(k) || [];
+          const kinds = [...new Set(list.map((x) => x.kind))];
+          cells.push(`<button type="button" class="cal-cell${k === todayKey ? ' is-today' : ''}${list.length ? ' has-items' : ''}${selectedDay === k ? ' is-selected' : ''}${k < todayKey ? ' is-past' : ''}" data-day="${k}" ${list.length ? '' : 'tabindex="-1"'} aria-label="${d} ${esc(MONTH(view))}: ${list.length ? list.length + ' elementos' : 'sin elementos'}">
+            <span class="cal-num">${d}</span>
+            ${list.length ? `<span class="cal-items">${list.slice(0, 2).map((x) => `<span class="cal-chip cal-chip-${x.kind}">${esc(x.label)}</span>`).join('')}${list.length > 2 ? `<span class="cal-more">+${list.length - 2}</span>` : ''}</span><span class="cal-dots">${kinds.map((x) => `<span class="cal-dot cal-dot-${x}"></span>`).join('')}</span>` : ''}
+          </button>`);
+        }
+        grid.innerHTML = `<div class="cal-weekdays">${['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((w) => `<span>${w}</span>`).join('')}</div><div class="cal-grid">${cells.join('')}</div>`;
+        grid.querySelectorAll('.cal-cell.has-items').forEach((c) => c.addEventListener('click', () => { selectedDay = selectedDay === c.dataset.day ? null : c.dataset.day; render(); }));
+      };
+      const renderAgenda = () => {
+        let list = visible();
+        if (selectedDay) {
+          list = list.filter((i) => localDayKey(i.at) === selectedDay);
+          agendaTitle.textContent = fmtDay(selectedDay + 'T12:00:00');
+        } else {
+          list = list.filter((i) => { const d = new Date(i.at); return d.getFullYear() === view.getFullYear() && d.getMonth() === view.getMonth(); });
+          agendaTitle.textContent = 'Agenda de ' + view.toLocaleDateString('es-ES', { month: 'long' });
+          agendaTitle.style.textTransform = 'none';
+        }
+        clearBtn.hidden = !selectedDay;
+        if (!list.length) {
+          const upcoming = visible().filter((i) => new Date(i.at) >= now);
+          box.innerHTML = emptyState(items.length ? 'Nada en estas fechas' : 'Calendario vacío', items.length ? (upcoming.length ? `Lo siguiente es el ${fmtDay(upcoming[0].at)}.` : 'No hay nada programado más adelante.') : 'Cuando el staff publique torneos y eventos (desde la web o con /vants en Discord) aparecerán aquí.', items.length && upcoming.length ? '<button type="button" class="btn btn-secondary btn-sm" data-cal-jump>Ir a lo siguiente</button>' : `<a class="btn btn-secondary btn-sm" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Seguir en Discord</a>`);
+          const jump = box.querySelector('[data-cal-jump]');
+          if (jump) jump.addEventListener('click', () => { const d = new Date(upcoming[0].at); view = new Date(d.getFullYear(), d.getMonth(), 1); selectedDay = localDayKey(d); render(); });
+          return;
+        }
+        box.innerHTML = groupByDay(list, 'at').map(([k, arr]) => `
+          <div class="match-day"><div class="match-day-header"><span class="match-day-date">${fmtDay(arr[0].at)}</span>${k === todayKey ? '<span class="match-day-badge">HOY</span>' : k < todayKey ? '<span class="match-day-badge is-past">PASADO</span>' : ''}</div>
+          ${arr.map((i) => i.html).join('')}</div>`).join('');
+        bindRsvp(main);
+      };
+      const render = () => { renderGrid(); renderAgenda(); };
+      main.querySelector('[data-cal-prev]').addEventListener('click', () => { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); selectedDay = null; render(); });
+      main.querySelector('[data-cal-next]').addEventListener('click', () => { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); selectedDay = null; render(); });
+      main.querySelector('[data-cal-today]').addEventListener('click', () => { view = new Date(now.getFullYear(), now.getMonth(), 1); selectedDay = items.some((i) => localDayKey(i.at) === todayKey) ? todayKey : null; render(); });
+      clearBtn.addEventListener('click', () => { selectedDay = null; render(); });
+      main.querySelectorAll('.calendar-filter').forEach((b) => b.addEventListener('click', () => {
+        main.querySelectorAll('.calendar-filter').forEach((x) => { x.classList.remove('active'); x.setAttribute('aria-selected', 'false'); });
+        b.classList.add('active'); b.setAttribute('aria-selected', 'true'); filter = b.dataset.filter; render();
+      }));
+      render();
     },
   },
 
   'ranked': {
     title: 'Ranked — VANTCALL Esports',
     content: `
-      <h1>Ranked</h1>
-      <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Ranked ${liveTag()}</p>
+      ${pageHero('03', 'Ranked VANTS', 'Sube de <span class="hero-accent">Hierro a Escarlata</span>', 'Cada partida mueve tu MMR. Ocho rangos, temporadas con recompensas y un leaderboard que se actualiza en tiempo real.', '<span class="page-hero-chip">Usa /ranking y /perfil en Discord</span>')}
       <div class="dash-grid" data-async="ranked-season">${skeleton(1)}</div>
       <h2>Rango VANTS</h2>
       ${RANKS_STRIP}
@@ -370,20 +513,30 @@ const DOC_CONTENT = {
       <h2>Reglas vigentes</h2>
       <div data-async="ranked-rules">${skeleton(2)}</div>
       <div class="bot-panel">
+ feat/diseno-premium
         <h3>Comandos del bot en Discord</h3>
         <div class="bot-commands">
-          <div class="bot-cmd"><code>/ranked entrar</code><span class="desc">Unirse a la cola</span></div>
-          <div class="bot-cmd"><code>/ranked placement</code><span class="desc">Partidas de calibración</span></div>
-          <div class="bot-cmd"><code>/ranked perfil</code><span class="desc">Perfil competitivo</span></div>
-          <div class="bot-cmd"><code>/ranked leaderboard</code><span class="desc">Clasificación</span></div>
-          <div class="bot-cmd"><code>/ranked resultado</code><span class="desc">Reportar resultado</span></div>
-          <div class="bot-cmd"><code>/ranked cancelar</code><span class="desc">Salir de la cola</span></div>
+          <div class="bot-cmd"><code>/perfil</code><span class="desc">Tu rango, MMR y plan</span></div>
+          <div class="bot-cmd"><code>/ranking</code><span class="desc">Top 10 de la temporada</span></div>
+          <div class="bot-cmd"><code>/torneos</code><span class="desc">Torneos abiertos</span></div>
+          <div class="bot-cmd"><code>/torneo inscribir</code><span class="desc">Inscribirte en un torneo</span></div>
+          <div class="bot-cmd"><code>/calendario</code><span class="desc">Próximos 7 días</span></div>
+          <div class="bot-cmd"><code>/vincular</code><span class="desc">Conectar Discord con la web</span></div>
         </div>
-        <p class="login-note">La cola ranked se gestiona desde el bot. Vincula Discord a tu cuenta para que tus partidas aparezcan aquí.</p>
+        <p class="login-note">Entra con Discord en la web para que el bot reconozca tu perfil. Los resultados y anuncios se publican automáticamente en los canales del servidor.</p>
+
+        <h3>Comandos del bot VANTS en Discord</h3>
+        <div class="bot-commands" data-async="bot-commands">${skeleton(2)}</div>
+        <p class="login-note">Los comandos se gestionan desde Supabase y responden con tus datos reales de la web. Entra con Discord o vincúlalo en Mi cuenta para usarlos.</p>
+ main
       </div>`,
     async load(main) {
       const DB = window.VantDB;
       const set = (k, h) => { const el = main.querySelector(`[data-async="${k}"]`); if (el) el.innerHTML = h; };
+      DB.client.from('bot_commands').select('name, description, min_plan, category').order('sort_order').then(({ data, error }) => {
+        if (error) return set('bot-commands', errorState(error));
+        set('bot-commands', (data || []).map((c) => `<div class="bot-cmd"><code>/${esc(c.name)}</code><span class="desc">${esc(c.description)}${c.min_plan !== 'free' ? ` · <b class="cmd-plan cmd-plan-${esc(c.min_plan)}">${esc(c.min_plan.toUpperCase())}</b>` : ''}</span></div>`).join('') || emptyState('Sin comandos', 'El staff aún no ha activado comandos.'));
+      });
       const RULE_LABEL = { placement_matches: 'Partidas de placement', mmr_per_win: 'MMR por victoria', mmr_per_loss: 'MMR por derrota', queue_timeout: 'Tiempo máximo en cola (s)', min_players_per_match: 'Jugadores mínimos por partida' };
       DB.rules().then((rs) => set('ranked-rules', rs.length ? `<div class="rules-grid">${rs.map((r) => `<div class="rule"><div class="rule-val">${esc(r.rule_value)}</div><div class="rule-key">${esc(RULE_LABEL[r.rule_key] || r.description || r.rule_key)}</div></div>`).join('')}</div>` : emptyState('Sin reglas', 'Las reglas se publicarán al abrir la temporada.'))).catch((e) => set('ranked-rules', errorState(e)));
       try {
@@ -402,14 +555,13 @@ const DOC_CONTENT = {
   'torneos': {
     title: 'Torneos — VANTCALL Esports',
     content: `
-      <h1>Torneos</h1>
-      <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Torneos ${liveTag()}</p>
+      ${pageHero('04', 'Torneos', 'Compite por <span class="hero-accent">premios reales</span>', 'VANT Open para todos, Pro Series para PRO y Elite Invitational para ELITE. Inscríbete en la web o con /torneo inscribir en Discord.', '<a class="page-hero-chip page-hero-chip-link" href="#/precios">Desbloquear torneos privados</a>')}
       <div data-async="tournaments">${skeleton(4)}</div>`,
     async load(main) {
       const box = main.querySelector('[data-async="tournaments"]');
       try {
         const ts = await window.VantDB.tournaments();
-        if (!ts.length) { box.innerHTML = emptyState('Todavía no hay torneos', 'Los organizadores publicarán aquí los torneos de VALORANT, CS2 y LoL. Inscríbete desde la web o con /torneo registrar en Discord.', `<a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Seguir en Discord</a>`); return; }
+        if (!ts.length) { box.innerHTML = emptyState('Todavía no hay torneos', 'Los organizadores publicarán aquí los torneos de VALORANT, CS2 y LoL. Inscríbete desde la web o con /torneo inscribir en Discord.', `<a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Seguir en Discord</a>`); return; }
         const open = ts.filter((t) => ['registration', 'open', 'upcoming', 'in_progress', 'live', 'active'].includes(t.status));
         const past = ts.filter((t) => ['completed', 'finished', 'cancelled', 'closed'].includes(t.status));
         const other = ts.filter((t) => !open.includes(t) && !past.includes(t));
@@ -422,8 +574,7 @@ const DOC_CONTENT = {
   'jugadores': {
     title: 'Jugadores — VANTCALL Esports',
     content: `
-      <h1>Jugadores</h1>
-      <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Jugadores ${liveTag()}</p>
+      ${pageHero('05', 'Jugadores', 'La comunidad <span class="hero-accent">VANTS</span>', 'Busca rivales, compañeros de equipo y fichajes. Cada perfil muestra rango, MMR, historial ranked y torneos jugados.', '<span class="page-hero-chip">Usa /perfil @jugador en Discord</span>')}
       <form class="search-bar" data-player-search role="search">
         <input class="login-form-input" name="q" type="search" placeholder="Buscar por nombre de jugador" aria-label="Buscar jugador" autocomplete="off">
         <button class="btn btn-primary" type="submit">Buscar</button>
@@ -441,7 +592,7 @@ const DOC_CONTENT = {
               <div class="player-info"><div class="player-name">${esc(p.display_name || p.username)}${p.verified ? ' <span class="verified" title="Verificado">✓</span>' : ''}</div>
               <div class="player-sub">@${esc(p.username)}${p.region ? ' · ' + esc(p.region) : ''}${p.main_game ? ' · ' + esc(GAMES[p.main_game] || p.main_game) : ''}</div></div>
             </a>`).join('')}</div>`
-            : emptyState(qs ? 'Sin resultados' : 'Aún no hay jugadores', qs ? 'Prueba con otro nombre.' : 'Sé el primero: crea tu cuenta con Discord o correo.', qs ? '' : '<a class="btn btn-primary" href="#/registro">Crear cuenta</a>');
+            : emptyState(qs ? 'Sin resultados' : 'Aún no hay jugadores', qs ? 'Prueba con otro nombre.' : 'Sé el primero: crea tu cuenta con Discord, Google, Steam o correo.', qs ? '' : '<a class="btn btn-primary" href="#/registro">Crear cuenta</a>');
         } catch (e) { box.innerHTML = errorState(e); }
       };
       main.querySelector('[data-player-search]').addEventListener('submit', (e) => { e.preventDefault(); run(e.target.q.value.trim()); });
@@ -454,71 +605,10 @@ const DOC_CONTENT = {
     title: 'Planes y Precios — VANTCALL Esports',
     group: 'Plataforma',
     content: `
-      <div class="pricing-header-block">
-        <div class="pricing-tag">TICKETS · MONETIZACIÓN</div>
-        <h1>VANT BASIC · PRO · ELITE</h1>
-        <p class="pricing-note">El pago se confirma por webhook de Stripe, no por el redirect del navegador. PayPal aparece en Checkout si está activo en tu cuenta Stripe.</p>
-        <p class="pricing-note-dim">Precios con IVA incluido. Necesitas iniciar sesión para comprar: el plan se asigna a tu cuenta automáticamente.</p>
-      </div>
+      ${pageHero('06', 'Planes VANT', 'Juega en <span class="hero-accent">otra liga</span>', 'Un único pago por temporada, sin suscripciones. Tu plan se activa al instante en tu cuenta, en la zona exclusiva y en tus roles de Discord.', '<span class="page-hero-chip">IVA incluido</span><span class="page-hero-chip">Pagos con Stripe</span>')}
+      ${planCards()}
 
-      <div class="pricing-grid">
-        <div class="pricing-card pricing-tier-1">
-          <div class="pricing-tier-tag">T1 · DISPONIBLE</div>
-          <h3 class="pricing-tier-name">VANT BASIC</h3>
-          <p class="pricing-desc">Acceso comunitario, 1 entrada a torneos abiertos y perfil Ranked.</p>
-          <div class="pricing-price-line">
-            <span class="pricing-price-num">€9</span>
-            <span class="pricing-price-type">PAGO ÚNICO</span>
-          </div>
-          <ul class="pricing-features">
-            <li>Ticket BASIC de por vida en esta temporada</li>
-            <li>Inscripción a VANT Open</li>
-            <li>Perfil Ranked (Bronze-Gold)</li>
-            <li>Soporte estándar</li>
-          </ul>
-          <a href="#/checkout/basic" class="btn btn-secondary pricing-btn">COMPRAR</a>
-        </div>
-
-        <div class="pricing-card pricing-tier-2 pricing-featured">
-          <div class="pricing-badge">MÁS POPULAR</div>
-          <div class="pricing-tier-tag">T2 · DISPONIBLE</div>
-          <h3 class="pricing-tier-name">VANT PRO</h3>
-          <p class="pricing-desc">Ranked completo, Pro Series y prioridad de tryouts.</p>
-          <div class="pricing-price-line">
-            <span class="pricing-price-num">€19</span>
-            <span class="pricing-price-type">PAGO ÚNICO</span>
-          </div>
-          <ul class="pricing-features">
-            <li>Todo BASIC</li>
-            <li>VANT Pro Series</li>
-            <li>Sala privada / scrims</li>
-            <li>Prioridad en tryouts</li>
-            <li>Rol Operator equivalente</li>
-          </ul>
-          <a href="#/checkout/pro" class="btn btn-primary pricing-btn">COMPRAR</a>
-        </div>
-
-        <div class="pricing-card pricing-tier-3 pricing-elite">
-          <div class="pricing-badge pricing-badge-elite">ELITE</div>
-          <div class="pricing-tier-tag">T3 · DISPONIBLE</div>
-          <h3 class="pricing-tier-name">VANT ELITE</h3>
-          <p class="pricing-desc">Elite Invitational, cupo Command y marca visible en Ranked.</p>
-          <div class="pricing-price-line">
-            <span class="pricing-price-num">€39</span>
-            <span class="pricing-price-type">PAGO ÚNICO</span>
-          </div>
-          <ul class="pricing-features">
-            <li>Todo PRO</li>
-            <li>VANT Elite Invitational</li>
-            <li>Badge Elite en perfil</li>
-            <li>Canal Command</li>
-            <li>Revisión de verificación prioritaria</li>
-          </ul>
-          <a href="#/checkout/elite" class="btn btn-secondary pricing-btn">COMPRAR</a>
-        </div>
-      </div>
-
-      <h2 style="margin-top: var(--space-20);">COMPARATIVA DE PLANES</h2>
+      <h2 class="vp-compare-title">Comparativa de planes</h2>
 
       <div class="pricing-comparison">
         <table>
@@ -541,10 +631,19 @@ const DOC_CONTENT = {
             <tr><td>Canal Command</td><td class="cross">—</td><td class="cross">—</td><td class="check">✓</td></tr>
             <tr><td>Soporte prioritario</td><td class="cross">—</td><td class="check">✓</td><td class="check">✓</td></tr>
             <tr><td>Verificación prioritaria</td><td class="cross">—</td><td class="cross">—</td><td class="check">✓</td></tr>
+            <tr><td>Zona exclusiva en la web</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+            <tr><td>Rol en Discord</td><td class="check">BASIC</td><td class="check">Operator</td><td class="check">Elite</td></tr>
           </tbody>
         </table>
       </div>
 
+      <div class="vp-faq">
+        <h2>Preguntas frecuentes</h2>
+        <details><summary>¿Es una suscripción?</summary><p>No. Pagas una vez y el plan dura toda la temporada en curso. No hay renovaciones automáticas.</p></details>
+        <details><summary>¿Cuándo se activa mi plan?</summary><p>En cuanto Stripe confirma el pago (normalmente en segundos). Lo verás en Mi cuenta, en la Zona exclusiva y con /zona en Discord.</p></details>
+        <details><summary>¿Puedo mejorar de BASIC a PRO o ELITE?</summary><p>Sí. Compra el plan superior cuando quieras y se aplicará el de mayor nivel.</p></details>
+        <details><summary>¿Qué métodos de pago aceptáis?</summary><p>Tarjeta, Apple Pay y Google Pay a través de Stripe. PayPal aparece si está activo en el checkout.</p></details>
+      </div>
       <p class="pricing-footer-note">Pagos procesados por Stripe. ¿Dudas con tu compra? Escribe a <a href="mailto:feispla@hotmail.com" class="pricing-link">feispla@hotmail.com</a></p>
     `
   },
