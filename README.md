@@ -1,5 +1,5 @@
 
-text
+
 <div align="center">
   <img src="https://raw.githubusercontent.com/feispla/VantsportsOficial/main/assets/brand/vants-lockup-light.png" alt="VANTS Logo" width="400" />
   
