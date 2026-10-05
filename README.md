@@ -11,9 +11,7 @@
   [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?template=https://github.com/feispla/VantsportsOficial)
   
   **Plataforma competitiva de esports con autenticación multi-proveedor, pagos con Stripe, integración con Steam/Valorant/Riot, torneos automatizados y bot de Discord.**
-  
-  **Demo:** [https://vantsbetaa.pplx.app/](https://vantsbetaa.pplx.app/)
-</div>
+
 
  fix/bot-main-readme
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#-licencia)
