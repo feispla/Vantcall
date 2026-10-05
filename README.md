@@ -13,13 +13,6 @@
   **Plataforma competitiva de esports con autenticación multi-proveedor, pagos con Stripe, integración con Steam/Valorant/Riot, torneos automatizados y bot de Discord.**
 
 
- fix/bot-main-readme
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](#-licencia)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
-[![Discord](https://img.shields.io/badge/Discord-Bot-5865F2?logo=discord)](https://discord.com)
-
-
-
 ## 🚀 Deploy on Railway
 
 Deploy VANTS Discord bot on Railway in one click. Just set your environment variables and you're ready to go!
