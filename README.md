@@ -1,13 +1,55 @@
 
-# VANTS - Plataforma de Esports Premium
+text
+<div align="center">
+  <img src="https://raw.githubusercontent.com/feispla/VantsportsOficial/main/assets/brand/vants-lockup-light.png" alt="VANTS Logo" width="400" />
+  
+  # VANTS - Plataforma de Esports Premium
+  
+  [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+  [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
+  [![Discord](https://img.shields.io/badge/Discord-Bot-5865F2?logo=discord)](https://discord.com)
+  [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?template=https://github.com/feispla/VantsportsOficial)
+  
+  **Plataforma competitiva de esports con autenticación multi-proveedor, pagos con Stripe, integración con Steam/Valorant/Riot, torneos automatizados y bot de Discord.**
+  
+  **Demo:** [https://vantsbetaa.pplx.app/](https://vantsbetaa.pplx.app/)
+</div>
 
+ fix/bot-main-readme
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#-licencia)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
 [![Discord](https://img.shields.io/badge/Discord-Bot-5865F2?logo=discord)](https://discord.com)
 
-Plataforma competitiva de esports con autenticación multi-proveedor, pagos con Stripe, integración con Steam/Valorant/Riot, torneos automatizados y bot de Discord.
 
-**Demo:** [https://vantsbetaa.pplx.app/](https://vantsbetaa.pplx.app/)
+
+## 🚀 Deploy on Railway
+
+Deploy VANTS Discord bot on Railway in one click. Just set your environment variables and you're ready to go!
+
+### Quick Deploy
+
+1. Click the **Deploy on Railway** button above
+2. Set these environment variables:
+   - `DISCORD_TOKEN` - Your Discord bot token
+   - `DISCORD_GUILD_ID` - Your Discord server ID
+   - `SUPABASE_URL` - Your Supabase project URL
+   - `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
+   - `PORT` - 8080
+3. Deploy! Railway will handle the rest
+
+---
+
+## 🎮 About VANTS
+main
+
+VANTS is a complete esports platform for Discord communities:
+
+- **🏆 Tournament Management**: Create and manage tournaments for 12+ games (Valorant, LoL, CS2, MLBB, etc.)
+- **📊 Player Rankings**: Track player stats, ranks, and tournament history with real-time leaderboards
+- **🎮 Valorant Integration**: Sync with ValoTracker for ranked stats, RR, and match history
+- **💳 Payment Processing**: Accept payments for tournament entries via Stripe (BASIC, PRO, ELITE plans)
+- **🌐 Multi-Platform**: Web dashboard + Discord bot
+- **🔒 Secure**: RLS policies, OAuth authentication, and encrypted secrets in Supabase Vault
 
 ---
 
@@ -62,6 +104,7 @@ VantsportsOficial/
 │   ├── utils/             # health.py (healthcheck HTTP), supabase_client.py
 │   └── requirements.txt
 ├── supabase/
+ fix/bot-main-readme
 │   ├── functions/         # Edge Functions
 │   │   ├── steam-login/
 │   │   ├── discord-commands/
@@ -76,6 +119,26 @@ VantsportsOficial/
     ├── ranks/             # 8 emblemas de rango premium
     └── BRAND.md           # Guía de marca
 ```
+
+│ ├── functions/ # Edge Functions
+│ │ ├── stripe-webhook/
+│ │ ├── link-steam-start/
+│ │ ├── link-steam-callback/
+│ │ ├── unlink-steam/
+│ │ ├── discord-commands/
+│ │ ├── discord-admin/
+│ │ └── discord-notify/
+│ ├── schema.sql # Estructura de BD
+│ ├── seed.sql # Datos iniciales
+│ └── migrations/ # Migraciones
+├── assets/
+│ ├── brand/ # Logo, favicon, iconos
+│ └── ranks/ # 8 emblemas de rango premium
+└── docs/
+└── BRAND.md # Guía de marca
+
+text
+ main
 
 ---
 
@@ -113,6 +176,7 @@ VantsportsOficial/
 | Comando | Descripción |
 |---------|-------------|
 | `/vincular riot` | Vincula cuenta de Riot Games al perfil |
+ fix/bot-main-readme
 | `/perfil` | Muestra el perfil VANTS del jugador |
 | `/valorant ranking` | Top 10 de Valorant |
 | `/valorant perfil` | Stats de Valorant de un jugador |
@@ -121,6 +185,15 @@ VantsportsOficial/
 **HTTP Interactions (Edge Function `discord-commands`)**: `/ayuda`, `/zona`, `/web`, `/vincular`, `/perfil`, `/ranking`, `/torneos`, `/torneo inscribir`, `/eventos`, `/calendario`, `/planes` y los comandos de staff `/vants ...`. El catálogo se gestiona en la tabla `bot_commands`.
 
 **Panel admin web (Edge Function `discord-admin`)**: acciones `status`, `connect`, `sync` y `announce`, que requieren un usuario de `web_admins`. No son comandos slash.
+
+| `/perfil` | Muestra stats del jugador (torneos, rango, cuentas vinculadas) |
+| `/valorant ranking` | Muestra top 10 de Valorant |
+| `/valorant perfil` | Muestra stats de Valorant de un jugador |
+| `/status` | Estado del bot (solo staff) |
+| `/connect` | Conecta el servidor con VANTS (guarda token en Vault) |
+| `/sync` | Sincroniza datos de torneos y jugadores |
+| `/announce` | Publica anuncios en canales configurados |
+ main
 
 ### Implementación
 
@@ -321,7 +394,7 @@ MIT License.
 
 - **Web:** [https://vantsbetaa.pplx.app/](https://vantsbetaa.pplx.app/)
 - **Discord:** Únete al servidor oficial
-- **Email:** feisplaa@gmail.com
+- **Email:** [feisplaa@gmail.com](mailto:feisplaa@gmail.com)
 
 ---
 
@@ -332,5 +405,6 @@ MIT License.
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
 [![Discord](https://img.shields.io/badge/Discord-Server-5865F2?logo=discord)](https://discord.com)
 [![Stripe](https://img.shields.io/badge/Stripe-Payments-008CDD?logo=stripe)](https://stripe.com)
+[![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway)](https://railway.app/new?template=https://github.com/feispla/VantsportsOficial)
 
 </div>
