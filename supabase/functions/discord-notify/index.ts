@@ -19,8 +19,21 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const admin = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
+ feat/diseno-premium
 const BOT_TOKEN = Deno.env.get('DISCORD_BOT_TOKEN') ?? Deno.env.get('DISCORD_TOKEN') ?? '';
 const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantcall-esports1.pplx.app').replace(/\/$/, '');
+=======
+let BOT_TOKEN = Deno.env.get('DISCORD_BOT_TOKEN') ?? Deno.env.get('DISCORD_TOKEN') ?? '';
+let tokenLoaded = Boolean(BOT_TOKEN);
+// Token guardado desde el panel admin (Supabase Vault)
+async function loadToken() {
+  if (tokenLoaded) return;
+  const { data } = await admin.rpc('get_bot_secret', { p_name: 'discord_bot_token' });
+  if (typeof data === 'string' && data) BOT_TOKEN = data;
+  tokenLoaded = true;
+}
+const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbetaa.pplx.app').replace(/\/$/, '');
+ main
 
 type Category = 'anuncios' | 'registros' | 'ranked' | 'staff' | 'logs';
 const CATEGORIES: Category[] = ['anuncios', 'registros', 'ranked', 'staff', 'logs'];
@@ -113,7 +126,11 @@ async function targetFor(category: Category): Promise<Target | null> {
 async function send(target: Target, embed: Embed): Promise<{ ok: boolean; status: number; retryAfter?: number; error?: string }> {
   const body = JSON.stringify({ embeds: [{ ...embed, footer: { text: 'VANTS · vantcall esports' }, timestamp: new Date().toISOString() }], allowed_mentions: { parse: [] } });
   const url = target.kind === 'bot' ? `https://discord.com/api/v10/channels/${target.channelId}/messages` : `${target.url}?wait=true`;
+feat/diseno-premium
   const headers: Record<string, string> = { 'Content-Type': 'application/json', 'User-Agent': 'VANTS-Notify (https://vantcall-esports1.pplx.app, 1.0)' };
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'User-Agent': 'VANTS-Notify (https://vantsbetaa.pplx.app, 1.0)' };
+main
   if (target.kind === 'bot') headers.Authorization = `Bot ${BOT_TOKEN}`;
   const r = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(8000) });
   if (r.ok) return { ok: true, status: r.status };
@@ -162,6 +179,10 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 Deno.serve(async (req) => {
   if (!(await authorized(req))) return json({ error: 'unauthorized' }, 401);
+ feat/diseno-premium
+=======
+  await loadToken();
+ main
 
   if (req.method === 'GET') {
     const db = await dbChannels();

@@ -13,14 +13,20 @@ async def _health(_request: web.Request) -> web.Response:
 
 async def start_health_server() -> None:
     global _runner
+
     if _runner is not None:
         return
+
     async with _start_lock:
         if _runner is not None:
             return
+
         app = web.Application()
         app.router.add_get("/", _health)
+
         _runner = web.AppRunner(app)
         await _runner.setup()
+
         port = int(os.getenv("PORT", "8080"))
-        await web.TCPSite(_runner, "0.0.0.0", port).start()
+        site = web.TCPSite(_runner, "0.0.0.0", port)
+        await site.start()

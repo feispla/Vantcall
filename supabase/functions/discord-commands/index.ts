@@ -8,8 +8,13 @@
 import nacl from 'npm:tweetnacl@1.0.3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+ feat/diseno-premium
 const DISCORD_PUBLIC_KEY = Deno.env.get('DISCORD_PUBLIC_KEY') ?? '';
 const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantcall-esports1.pplx.app').replace(/\/$/, '');
+
+const ENV_PUBLIC_KEY = Deno.env.get('DISCORD_PUBLIC_KEY') ?? '';
+const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbetaa.pplx.app').replace(/\/$/, '');
+ main
 const TZ = Deno.env.get('VANTS_TZ') ?? 'Europe/Madrid';
 const INVITE = 'https://discord.gg/rCHE7jvRS4';
 const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
@@ -36,7 +41,21 @@ function hexToBytes(value: string): Uint8Array | null {
   for (let i = 0; i < bytes.length; i++) bytes[i] = Number.parseInt(value.slice(i * 2, i * 2 + 2), 16);
   return bytes;
 }
+ feat/diseno-premium
 function isValidDiscordRequest(req: Request, body: string): boolean {
+
+// Clave pública: secret DISCORD_PUBLIC_KEY o Vault (la guarda el panel admin al conectar el bot)
+let vaultKey: string | null = null;
+async function publicKey(): Promise<string> {
+  if (ENV_PUBLIC_KEY) return ENV_PUBLIC_KEY;
+  if (!vaultKey) {
+    const { data } = await admin.rpc('get_bot_secret', { p_name: 'discord_public_key' });
+    vaultKey = typeof data === 'string' && data ? data : null;
+  }
+  return vaultKey ?? '';
+}
+function isValidDiscordRequest(req: Request, body: string, DISCORD_PUBLIC_KEY: string): boolean {
+ main
   const signature = hexToBytes(req.headers.get('X-Signature-Ed25519') ?? '');
   const timestamp = req.headers.get('X-Signature-Timestamp') ?? '';
   const publicKey = hexToBytes(DISCORD_PUBLIC_KEY);
@@ -113,6 +132,7 @@ function parseLocalDate(input: unknown): string | null {
 }
 const slugify = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'torneo';
 
+ feat/diseno-premium
 // ---------- comandos ----------
 async function handle(path: string, opts: Record<string, unknown>, user: DUser, guildId?: string): Promise<Response> {
   switch (path) {
@@ -129,6 +149,47 @@ async function handle(path: string, opts: Record<string, unknown>, user: DUser, 
         '`/web` — enlaces de la plataforma',
         '', '**Staff:** `/vants canal`, `/vants torneo-crear`, `/vants torneo-estado`, `/vants evento-crear`, `/vants temporada-iniciar`, `/vants estado`',
       ].join('\n') }]);
+
+// ---------- catálogo de comandos (public.bot_commands) ----------
+type Cmd = { name: string; description: string; kind: string; category: string; enabled: boolean; staff_only: boolean; min_plan: string; response_title: string | null; response_body: string | null; response_url: string | null; color: string | null; ephemeral: boolean; uses: number };
+let catalog: { at: number; map: Map<string, Cmd> } | null = null;
+async function commands(): Promise<Map<string, Cmd>> {
+  if (catalog && Date.now() - catalog.at < 30_000) return catalog.map;
+  const { data } = await admin.from('bot_commands').select('*').order('sort_order');
+  catalog = { at: Date.now(), map: new Map((data ?? []).map((c: Cmd) => [c.name, c])) };
+  return catalog.map;
+}
+const PLAN_ORDER = ['free', 'basic', 'pro', 'elite'];
+const PLAN_NAME: Record<string, string> = { free: 'Gratis', basic: 'VANT BASIC', pro: 'VANT PRO', elite: 'VANT ELITE' };
+const hexColor = (c: string | null | undefined, d = RED) => (c && /^#[0-9a-f]{6}$/i.test(c) ? parseInt(c.slice(1), 16) : d);
+async function logRun(command: string, user: DUser, guildId: string | undefined, ok: boolean) {
+  await admin.from('bot_command_runs').insert({ command, discord_id: user.id, guild_id: guildId ?? null, ok });
+  const c = (await commands()).get(command);
+  if (c) await admin.from('bot_commands').update({ uses: (c.uses ?? 0) + 1, last_used_at: new Date().toISOString() }).eq('name', command);
+}
+
+// ---------- comandos ----------
+async function handle(path: string, opts: Record<string, unknown>, user: DUser, guildId?: string): Promise<Response> {
+  switch (path) {
+    case 'ayuda': case 'help': {
+      const list = [...(await commands()).values()].filter((c) => c.enabled);
+      const staff = await isStaff(user.id);
+      const lines = list.filter((c) => !c.staff_only).map((c) => `\`/${c.name}\` — ${clip(c.description, 80)}${c.min_plan !== 'free' ? ` · ${PLAN_NAME[c.min_plan]}` : ''}`);
+      if (staff) lines.push('', '**Staff:** `/vants canal`, `/vants torneo-crear`, `/vants torneo-estado`, `/vants evento-crear`, `/vants temporada-iniciar`, `/vants estado`');
+      return reply('', [{ title: 'Comandos de VANTS', color: RED, url: url('inicio'), description: lines.join('\n') || 'No hay comandos activos.' }]);
+    }
+
+    case 'zona': {
+      const p = await playerByDiscord(user.id);
+      if (!p) return reply(`Vincula tu Discord para ver tus ventajas: ${url('login')}`);
+      const plan = await planOf(p.id);
+      if (plan === 'free') return reply('', [{ title: 'Zona exclusiva VANTS', color: AMBER, url: url('precios'), description: `Aún no tienes plan. Desbloquea torneos privados, scrims y el canal Command desde **9 €**.\n[Ver planes](${url('precios')})` }]);
+      const rank = PLAN_ORDER.indexOf(plan);
+      const { data: perks } = await admin.from('plan_content').select('tier, kind, title, cta_url').eq('published', true).order('sort_order');
+      const mine = (perks ?? []).filter((x) => PLAN_ORDER.indexOf(String(x.tier)) <= rank);
+      return reply('', [{ title: `Tu zona ${PLAN_NAME[plan]}`, color: plan === 'elite' ? AMBER : RED, url: url('zona'), description: mine.map((x) => `• ${clip(x.title, 80)}${x.cta_url && String(x.cta_url).startsWith('https://') ? ` — [abrir](${x.cta_url})` : ''}`).join('\n') || 'Tus ventajas aparecerán aquí.', fields: [{ name: 'Panel completo', value: `[Abrir zona exclusiva](${url('zona')})` }] }]);
+    }
+ main
 
     case 'web':
       return reply('', [{ title: 'VANTS · vantcall esports', color: RED, url: SITE, description: `[Web](${SITE}) · [Ranked](${url('ranked')}) · [Torneos](${url('torneos')}) · [Calendario](${url('calendario')}) · [Planes](${url('precios')}) · [Zona de plan](${url('zona')})` }], false);
@@ -296,8 +357,18 @@ async function handle(path: string, opts: Record<string, unknown>, user: DUser, 
       return reply('Comando no reconocido.');
     }
 
+ feat/diseno-premium
     default:
       return reply(`No reconozco \`/${clip(path, 40)}\`. Usa \`/ayuda\` para ver los comandos.`);
+
+    default: {
+      const c = (await commands()).get(path.split(' ')[0]);
+      if (c && c.kind === 'custom') {
+        return reply('', [{ title: clip(c.response_title || `/${c.name}`, 256), color: hexColor(c.color), ...(c.response_url ? { url: c.response_url } : {}), description: clip(c.response_body || c.description, 3500) }], c.ephemeral);
+      }
+      return reply(`No reconozco \`/${clip(path, 40)}\`. Usa \`/ayuda\` para ver los comandos.`);
+    }
+ main
   }
 }
 
@@ -305,7 +376,11 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const body = await req.text();
   let valid = false;
+ feat/diseno-premium
   try { valid = isValidDiscordRequest(req, body); } catch { valid = false; }
+
+  try { valid = isValidDiscordRequest(req, body, await publicKey()); } catch { valid = false; }
+main
   if (!valid) return json({ error: 'Invalid Discord request signature' }, 401);
 
   let interaction: Interaction;
@@ -316,9 +391,27 @@ Deno.serve(async (req) => {
   const user = interaction.member?.user ?? interaction.user;
   if (!user?.id) return reply('No se pudo identificar tu usuario de Discord.');
   const { path, opts } = commandPath(interaction.data);
+feat/diseno-premium
   try {
     return await handle(path, opts, user, interaction.guild_id);
   } catch (e) {
+
+  const root = path.split(' ')[0];
+  const cmd = (await commands()).get(root);
+  if (cmd && !cmd.enabled) return reply(`El comando \`/${root}\` está desactivado por el staff.`);
+  if (cmd && cmd.staff_only && !(await isStaff(user.id))) return reply('Este comando es solo para el staff de VANTS.');
+  if (cmd && cmd.min_plan !== 'free') {
+    const p = await playerByDiscord(user.id);
+    const plan = p ? await planOf(p.id) : 'free';
+    if (PLAN_ORDER.indexOf(plan) < PLAN_ORDER.indexOf(cmd.min_plan)) return reply(`\`/${root}\` es exclusivo de **${PLAN_NAME[cmd.min_plan]}** o superior. Mejora tu plan en ${url('precios')}`);
+  }
+  try {
+    const res = await handle(path, opts, user, interaction.guild_id);
+    logRun(root, user, interaction.guild_id, true).catch(() => {});
+    return res;
+  } catch (e) {
+    logRun(root, user, interaction.guild_id, false).catch(() => {});
+ main
     console.error('discord-commands', path, e);
     return reply('Algo falló al procesar el comando. Inténtalo de nuevo en un momento.');
   }

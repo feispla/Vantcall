@@ -10,9 +10,24 @@
   const SUPABASE_KEY = 'sb_publishable_Wd5NBpT9pqEJV4Gw4jJB7w_hFXYvYtm';
 
   const lib = window.supabase;
+  // Algunos contextos (iframes de vista previa) bloquean la Locks API: usamos un cerrojo en memoria.
+  const memLocks = new Map();
+  async function safeLock(name, acquireTimeout, fn) {
+    try {
+      if (navigator.locks && navigator.locks.request) {
+        return await navigator.locks.request(name, { mode: 'exclusive' }, () => fn());
+      }
+    } catch (err) {
+      if (!(err && (err.name === 'SecurityError' || /Locks API/i.test(err.message || '')))) throw err;
+    }
+    const prev = memLocks.get(name) || Promise.resolve();
+    const run = prev.catch(() => {}).then(() => fn());
+    memLocks.set(name, run.catch(() => {}));
+    return run;
+  }
   const client = lib && lib.createClient
     ? lib.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+        auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, lock: safeLock },
       })
     : null;
 
