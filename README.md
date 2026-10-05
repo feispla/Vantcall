@@ -9,7 +9,7 @@
   [![Stripe](https://img.shields.io/badge/Stripe-Payments-008CDD?logo=stripe)](https://stripe.com)
   [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
   [![Discord](https://img.shields.io/badge/Discord-Bot-5865F2?logo=discord)](https://discord.com)
-  [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?template=https://github.com/feispla/VantsportsOficial)
+ [![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway)](https://railway.app/new?template=https://github.com/feispla/VantsportsOficial)
   
   **Plataforma competitiva de esports con autenticación multi-proveedor, pagos con Stripe, integración con Steam/Valorant/Riot, torneos automatizados y bot de Discord.**
 
@@ -397,6 +397,6 @@ MIT License.
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
 [![Discord](https://img.shields.io/badge/Discord-Server-5865F2?logo=discord)](https://discord.com)
 [![Stripe](https://img.shields.io/badge/Stripe-Payments-008CDD?logo=stripe)](https://stripe.com)
-[![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway)](https://railway.app/new?template=https://github.com/feispla/VantsportsOficial)
+
 
 </div>
