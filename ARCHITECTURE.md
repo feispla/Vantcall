@@ -216,22 +216,7 @@ flowchart TB
 - **Agentvants**: administra la web — lee código del repo, consulta/escribe Supabase, consulta la API de Riot (`riot_account_lookup`, `valorant_ranked` con act_id `8102cd81-43a0-d0d7-bd59-47b8fe9bed1b` — ACT V, cambiar el 14-oct-2026).
 - **Stripe**: checkout de planes BASIC/PRO/ELITE (enlaces `#/checkout/<plan>` en `planCards()`).
 
-## 8. Rangos VANTS (compartido por web y bot)
-
-| # | Rango | MMR mínimo | Asset |
-|---|---|---|---|
-| 1 | Hierro | 0 | `assets/ranks/hierro.(svg,png)` |
-| 2 | Bronce | 900 | `assets/ranks/bronce.*` |
-| 3 | Plata | 1100 | `assets/ranks/plata.*` |
-| 4 | Oro | 1300 | `assets/ranks/oro.*` |
-| 5 | Platino | 1500 | `assets/ranks/platino.*` |
-| 6 | Diamante | 1700 | `assets/ranks/diamante.*` |
-| 7 | Titán | 1900 | `assets/ranks/titan.*` |
-| 8 | Escarlata | 2100 | `assets/ranks/escarlata.*` |
-
-Definidos en `app.js` (`VANTS_RANKS`) y renderizados por `ranks.js` (`window.VantsRanks`). La web desplegada en pplx.app sirve una build aparte; este repo es la fuente.
-
-## 9. Notas operativas para bots
+## 8. Notas operativas para bots
 
 1. **`leaderboard` es una vista** — nunca hacer INSERT/UPDATE; escribir en `players` + `season_player_stats` de la temporada activa (`d3ffc87e-3178-4bd2-a33d-413a88b90b7b`, "TEMPORADA 2 VANTS").
 2. **Claves**: el frontend usa la anon key (RLS protege); escrituras administrativas requieren `service_role` (nunca en el repo).
