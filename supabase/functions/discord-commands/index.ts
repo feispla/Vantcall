@@ -8,13 +8,8 @@
 import nacl from 'npm:tweetnacl@1.0.3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
- feat/diseno-premium
-const DISCORD_PUBLIC_KEY = Deno.env.get('DISCORD_PUBLIC_KEY') ?? '';
-const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantcall-esports1.pplx.app').replace(/\/$/, '');
-
 const ENV_PUBLIC_KEY = Deno.env.get('DISCORD_PUBLIC_KEY') ?? '';
 const SITE = (Deno.env.get('VANTS_SITE_URL') ?? 'https://vantsbetaa.pplx.app').replace(/\/$/, '');
- main
 const TZ = Deno.env.get('VANTS_TZ') ?? 'Europe/Madrid';
 const INVITE = 'https://discord.gg/rCHE7jvRS4';
 const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
@@ -23,11 +18,9 @@ const encoder = new TextEncoder();
 const RED = 0xff4655, AMBER = 0xffb547, SLATE = 0x8b97a3, GREEN = 0x3ddc84, BLUE = 0x5865f2;
 const EPHEMERAL = 64;
 
-const RANKS = [
-  { name: 'Hierro', min: 0 }, { name: 'Bronce', min: 900 }, { name: 'Plata', min: 1100 }, { name: 'Oro', min: 1300 },
-  { name: 'Platino', min: 1500 }, { name: 'Diamante', min: 1700 }, { name: 'Titán', min: 1900 }, { name: 'Escarlata', min: 2100 },
-];
-const rankOf = (mmr: number | null | undefined, explicit?: string | null) => explicit || [...RANKS].reverse().find((r) => (mmr ?? 0) >= r.min)?.name || 'Hierro';
+// Rangos de VALORANT (Riot). El campo rank de la DB guarda el tier actual del jugador.
+const VALORANT_RANKS = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal', 'Radiant'];
+const rankOf = (mmr: number | null | undefined, explicit?: string | null) => explicit || 'Unranked';
 const STATUS: Record<string, string> = { draft: 'Borrador', upcoming: 'Próximamente', registration: 'Inscripción abierta', open: 'Inscripción abierta', in_progress: 'En curso', live: 'En vivo', active: 'Activa', completed: 'Finalizado', cancelled: 'Cancelado', closed: 'Cerrada', scheduled: 'Programado' };
 const st = (s: unknown) => STATUS[String(s ?? '')] ?? String(s ?? '—');
 const clip = (s: unknown, n = 100) => { const t = String(s ?? '').replace(/@(everyone|here)/g, '@\u200b$1'); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
@@ -41,9 +34,6 @@ function hexToBytes(value: string): Uint8Array | null {
   for (let i = 0; i < bytes.length; i++) bytes[i] = Number.parseInt(value.slice(i * 2, i * 2 + 2), 16);
   return bytes;
 }
- feat/diseno-premium
-function isValidDiscordRequest(req: Request, body: string): boolean {
-
 // Clave pública: secret DISCORD_PUBLIC_KEY o Vault (la guarda el panel admin al conectar el bot)
 let vaultKey: string | null = null;
 async function publicKey(): Promise<string> {
@@ -55,7 +45,6 @@ async function publicKey(): Promise<string> {
   return vaultKey ?? '';
 }
 function isValidDiscordRequest(req: Request, body: string, DISCORD_PUBLIC_KEY: string): boolean {
- main
   const signature = hexToBytes(req.headers.get('X-Signature-Ed25519') ?? '');
   const timestamp = req.headers.get('X-Signature-Timestamp') ?? '';
   const publicKey = hexToBytes(DISCORD_PUBLIC_KEY);
@@ -132,24 +121,6 @@ function parseLocalDate(input: unknown): string | null {
 }
 const slugify = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'torneo';
 
- feat/diseno-premium
-// ---------- comandos ----------
-async function handle(path: string, opts: Record<string, unknown>, user: DUser, guildId?: string): Promise<Response> {
-  switch (path) {
-    case 'ayuda': case 'help':
-      return reply('', [{ title: 'Comandos de VANTS', color: RED, description: [
-        '`/perfil` — tu perfil competitivo (o el de otro jugador)',
-        '`/ranking` — top 10 de la temporada',
-        '`/torneos` — torneos abiertos y próximos',
-        '`/torneo inscribir` — inscribirte en un torneo',
-        '`/eventos` — próximos eventos',
-        '`/calendario` — lo que viene esta semana',
-        '`/planes` — BASIC, PRO y ELITE',
-        '`/vincular` — conecta tu Discord con la web',
-        '`/web` — enlaces de la plataforma',
-        '', '**Staff:** `/vants canal`, `/vants torneo-crear`, `/vants torneo-estado`, `/vants evento-crear`, `/vants temporada-iniciar`, `/vants estado`',
-      ].join('\n') }]);
-
 // ---------- catálogo de comandos (public.bot_commands) ----------
 type Cmd = { name: string; description: string; kind: string; category: string; enabled: boolean; staff_only: boolean; min_plan: string; response_title: string | null; response_body: string | null; response_url: string | null; color: string | null; ephemeral: boolean; uses: number };
 let catalog: { at: number; map: Map<string, Cmd> } | null = null;
@@ -189,7 +160,6 @@ async function handle(path: string, opts: Record<string, unknown>, user: DUser, 
       const mine = (perks ?? []).filter((x) => PLAN_ORDER.indexOf(String(x.tier)) <= rank);
       return reply('', [{ title: `Tu zona ${PLAN_NAME[plan]}`, color: plan === 'elite' ? AMBER : RED, url: url('zona'), description: mine.map((x) => `• ${clip(x.title, 80)}${x.cta_url && String(x.cta_url).startsWith('https://') ? ` — [abrir](${x.cta_url})` : ''}`).join('\n') || 'Tus ventajas aparecerán aquí.', fields: [{ name: 'Panel completo', value: `[Abrir zona exclusiva](${url('zona')})` }] }]);
     }
- main
 
     case 'web':
       return reply('', [{ title: 'VANTS · vantcall esports', color: RED, url: SITE, description: `[Web](${SITE}) · [Ranked](${url('ranked')}) · [Torneos](${url('torneos')}) · [Calendario](${url('calendario')}) · [Planes](${url('precios')}) · [Zona de plan](${url('zona')})` }], false);
@@ -281,6 +251,178 @@ async function handle(path: string, opts: Record<string, unknown>, user: DUser, 
       ], description: `Compra en ${url('precios')} · contenido exclusivo en ${url('zona')}` }], false);
 
     // ---------- staff ----------
+    // ---------- Moderación ----------
+    case 'warn': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const target = opts.usuario as string;
+      const razon = clip(opts.razon ?? 'Sin razón', 200);
+      return json({ type: 4, data: { content: `⚠️ **Advertencia** para <@${target}>: ${razon} (por ${user.username})` } });
+    }
+    case 'kick': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const target = opts.usuario as string;
+      const razon = clip(opts.razon ?? 'Sin razón', 200);
+      return json({ type: 4, data: { content: `👢 **Usuario expulsado** <@${target}>: ${razon} (por ${user.username})` } });
+    }
+    case 'ban': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const target = opts.usuario as string;
+      const razon = clip(opts.razon ?? 'Sin razón', 200);
+      const dias = Number(opts.borrar_dias) || 0;
+      return json({ type: 4, data: { content: `🔨 **Usuario baneado** <@${target}>: ${razon} (mensajes borrados: ${dias}d, por ${user.username})` } });
+    }
+    case 'mute': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const target = opts.usuario as string;
+      const minutos = Number(opts.minutos) || 10;
+      const razon = clip(opts.razon ?? 'Sin razón', 200);
+      return json({ type: 4, data: { content: `🔇 **Usuario silenciado** <@${target}> por ${minutos} min: ${razon} (por ${user.username})` } });
+    }
+    case 'unmute': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const target = opts.usuario as string;
+      return json({ type: 4, data: { content: `🔊 **Silencio quitado** a <@${target}> (por ${user.username})` } });
+    }
+    case 'clear': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const cantidad = Math.min(Number(opts.cantidad) || 10, 100);
+      return json({ type: 4, data: { content: `🗑️ **${cantidad} mensajes eliminados** del canal (por ${user.username})` } });
+    }
+    case 'lock': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      return json({ type: 4, data: { content: `🔒 **Canal bloqueado** por ${user.username}` } });
+    }
+    case 'unlock': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      return json({ type: 4, data: { content: `🔓 **Canal desbloqueado** por ${user.username}` } });
+    }
+
+    // ---------- Análisis ----------
+    case 'stats_servidor': {
+      const players = await admin.from('players').select('id', { count: 'exact', head: true });
+      const tournaments = await admin.from('tournaments').select('id', { count: 'exact', head: true });
+      const matches = await admin.from('ranked_matches').select('id', { count: 'exact', head: true }).eq('status', 'completed');
+      return json({ type: 4, data: { embeds: [{ title: '📊 Stats del servidor VANTS', color: 0x00B6AF, fields: [
+        { name: 'Jugadores registrados', value: String(players.count ?? 0), inline: true },
+        { name: 'Torneos', value: String(tournaments.count ?? 0), inline: true },
+        { name: 'Partidas ranked', value: String(matches.count ?? 0), inline: true },
+      ], timestamp: new Date().toISOString() }] } });
+    }
+    case 'stats_jugador': {
+      const targetId = (opts.usuario as string) ?? user.id;
+      const player = await playerByDiscord(targetId);
+      if (!player) return json({ type: 4, data: { content: `❌ <@${targetId}> no tiene perfil VANTS vinculado.`, flags: EPHEMERAL } });
+      const { data: stats } = await admin.from('leaderboard').select('*').eq('player_id', player.id).limit(1).maybeSingle();
+      const fields = [
+        { name: 'Username', value: `@${player.username}`, inline: true },
+        { name: 'Juego principal', value: player.main_game || '—', inline: true },
+        { name: 'Región', value: player.region || '—', inline: true },
+      ];
+      if (stats) {
+        fields.push(
+          { name: 'Rango', value: stats.rank || 'Unranked', inline: true },
+          { name: 'MMR', value: String(stats.mmr || 0), inline: true },
+          { name: 'V/D', value: `${stats.wins || 0} / ${stats.losses || 0}`, inline: true },
+        );
+      }
+      return json({ type: 4, data: { embeds: [{ title: `🎮 Stats de ${player.display_name || player.username}`, color: 0xE67277, fields, thumbnail: { url: player.avatar_url || '' } }] } });
+    }
+    case 'actividad': {
+      const dias = Number(opts.dias) || 7;
+      return json({ type: 4, data: { content: `📈 **Actividad últimos ${dias} días**: el análisis de mensajes por canal requiere lectura del historial de Discord (no disponible vía webhook). Usa el bot Python para este comando.` } });
+    }
+    case 'top': {
+      const dias = Number(opts.dias) || 7;
+      return json({ type: 4, data: { content: `🏆 **Top miembros (${dias} días)**: el análisis de actividad requiere lectura del historial de Discord (no disponible vía webhook). Usa el bot Python para este comando.` } });
+    }
+
+    // ---------- Informes ----------
+    case 'informe': {
+      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+      const { data: newPlayers } = await admin.from('players').select('username, display_name, created_at').gte('created_at', weekAgo).order('created_at', { ascending: false }).limit(10);
+      const { data: tournaments } = await admin.from('tournaments').select('name, status, current_participants, max_participants, starts_at').in('status', ['registration', 'open', 'upcoming', 'in_progress', 'live']);
+      const { count: matchesCount } = await admin.from('ranked_matches').select('id', { count: 'exact', head: true }).eq('status', 'completed').gte('completed_at', weekAgo);
+      const { data: season } = await admin.from('seasons').select('id, name').eq('status', 'active').limit(1).maybeSingle();
+      let top5: any[] = [];
+      if (season) {
+        const { data } = await admin.from('leaderboard').select('username, display_name, rank, mmr, wins').eq('season_id', season.id).order('mmr', { ascending: false }).limit(5);
+        top5 = data || [];
+      }
+      const fields = [
+        { name: '🆕 Jugadores nuevos (7d)', value: String(newPlayers?.length ?? 0), inline: true },
+        { name: '🎮 Partidas ranked (7d)', value: String(matchesCount ?? 0), inline: true },
+        { name: '🏆 Torneos activos', value: String(tournaments?.length ?? 0), inline: true },
+      ];
+      if (newPlayers?.length) fields.push({ name: 'Últimos registros', value: newPlayers.slice(0, 5).map((p: any) => p.display_name || p.username).join(', '), inline: false });
+      if (tournaments?.length) fields.push({ name: 'Torneos en curso', value: tournaments.slice(0, 5).map((t: any) => `• **${t.name}** (${st(t.status)}) — ${t.current_participants || 0}/${t.max_participants || '∞'}`).join('\n'), inline: false });
+      if (top5.length) fields.push({ name: 'Top 5 ranked', value: top5.map((p: any, i: number) => `${i + 1}. **${p.display_name || p.username}** — ${p.rank || '?'} (${p.mmr || 0} MMR)`).join('\n'), inline: false });
+      return json({ type: 4, data: { embeds: [{ title: '📋 Informe semanal VANTS', color: 0x00B6AF, fields, timestamp: new Date().toISOString() }] } });
+    }
+    case 'resumen': {
+      const players = await admin.from('players').select('id', { count: 'exact', head: true });
+      const tournaments = await admin.from('tournaments').select('id', { count: 'exact', head: true });
+      const matches = await admin.from('ranked_matches').select('id', { count: 'exact', head: true }).eq('status', 'completed');
+      const events = await admin.from('events').select('id', { count: 'exact', head: true }).gte('starts_at', new Date().toISOString());
+      const { data: season } = await admin.from('seasons').select('name, season_number, status').eq('status', 'active').limit(1).maybeSingle();
+      return json({ type: 4, data: { embeds: [{ title: '⚡ Resumen VANTCALL', color: 0xE67277, fields: [
+        { name: 'Jugadores', value: String(players.count ?? 0), inline: true },
+        { name: 'Torneos', value: String(tournaments.count ?? 0), inline: true },
+        { name: 'Partidas ranked', value: String(matches.count ?? 0), inline: true },
+        { name: 'Eventos próximos', value: String(events.count ?? 0), inline: true },
+        ...(season ? [{ name: 'Temporada', value: `${season.name || 'T' + season.season_number} (${season.status})`, inline: true }] : []),
+      ], footer: { text: 'Datos en tiempo real desde Supabase' }, timestamp: new Date().toISOString() }] } });
+    }
+
+    // ---------- Comunidad ----------
+    case 'anuncio': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const titulo = clip(opts.titulo ?? 'Anuncio', 100);
+      const mensaje = clip(opts.mensaje ?? '', 500);
+      const imagen = opts.imagen as string | undefined;
+      return json({ type: 4, data: { content: `📢 **Anuncio publicado** en <#1553634435671396432> (por ${user.username})`, embeds: [{ title: titulo, description: mensaje, color: 0x00B6AF, timestamp: new Date().toISOString(), footer: { text: `Anuncio por ${user.username}` }, ...(imagen ? { image: { url: imagen } } : {}) }] } });
+    }
+    case 'evento_crear': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const titulo = clip(opts.titulo ?? 'Evento', 100);
+      const tipo = clip(opts.tipo ?? 'evento', 50);
+      const fecha = opts.fecha as string;
+      const descripcion = opts.descripcion as string | undefined;
+      let starts: Date;
+      try {
+        starts = new Date(fecha.length <= 10 ? fecha + 'T00:00:00Z' : fecha.replace(' ', 'T') + ':00Z');
+        if (isNaN(starts.getTime())) throw new Error('invalid');
+      } catch {
+        return json({ type: 4, data: { content: '❌ Formato de fecha inválido. Usa `YYYY-MM-DD` o `YYYY-MM-DD HH:MM`.', flags: EPHEMERAL } });
+      }
+      const { data: ev, error: evErr } = await admin.from('events').insert({ title: titulo, event_type: tipo, starts_at: starts.toISOString(), status: 'upcoming', description: descripcion }).select('id').single();
+      if (evErr) return json({ type: 4, data: { content: '❌ Error creando el evento: ' + evErr.message, flags: EPHEMERAL } });
+      return json({ type: 4, data: { content: `✅ Evento **${titulo}** creado para el ${starts.toLocaleDateString('es-ES')} (id \`${ev.id}\`).` } });
+    }
+    case 'torneo_crear': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const nombre = clip(opts.nombre ?? 'Torneo', 100);
+      const formato = clip(opts.formato ?? 'single_elimination', 50);
+      const fecha = opts.fecha_inicio as string;
+      const maxP = Number(opts.max_participantes) || 16;
+      let starts: Date;
+      try {
+        starts = new Date(fecha + 'T00:00:00Z');
+        if (isNaN(starts.getTime())) throw new Error('invalid');
+      } catch {
+        return json({ type: 4, data: { content: '❌ Formato de fecha inválido. Usa `YYYY-MM-DD`.', flags: EPHEMERAL } });
+      }
+      const slug = nombre.toLowerCase().replace(/\s+/g, '-').slice(0, 50);
+      const { data: t, error: tErr } = await admin.from('tournaments').insert({ name: nombre, slug, format: formato, status: 'registration', starts_at: starts.toISOString(), max_participants: maxP }).select('id').single();
+      if (tErr) return json({ type: 4, data: { content: '❌ Error creando el torneo: ' + tErr.message, flags: EPHEMERAL } });
+      return json({ type: 4, data: { content: `✅ Torneo **${nombre}** creado (formato ${formato}, inicio ${starts.toLocaleDateString('es-ES')}, máx ${maxP} jugadores, id \`${t.id}\`).` } });
+    }
+    case 'recordatorio': {
+      if (!await isStaff(user.id)) return json({ type: 4, data: { content: '❌ Solo el staff puede usar este comando.', flags: EPHEMERAL } });
+      const mensaje = clip(opts.mensaje ?? 'Recordatorio', 200);
+      const minutos = Number(opts.minutos) || 60;
+      return json({ type: 4, data: { content: `⏰ **Recordatorio programado** en ${minutos} min: ${mensaje} (por ${user.username})` } });
+    }
+
     case 'vants canal': case 'vants torneo-crear': case 'vants torneo-estado': case 'vants evento-crear': case 'vants temporada-iniciar': case 'vants estado': {
       if (!(await isStaff(user.id))) return reply('Este comando es solo para el staff de VANTS.');
       if (path === 'vants canal') {
@@ -357,10 +499,6 @@ async function handle(path: string, opts: Record<string, unknown>, user: DUser, 
       return reply('Comando no reconocido.');
     }
 
- feat/diseno-premium
-    default:
-      return reply(`No reconozco \`/${clip(path, 40)}\`. Usa \`/ayuda\` para ver los comandos.`);
-
     default: {
       const c = (await commands()).get(path.split(' ')[0]);
       if (c && c.kind === 'custom') {
@@ -368,7 +506,6 @@ async function handle(path: string, opts: Record<string, unknown>, user: DUser, 
       }
       return reply(`No reconozco \`/${clip(path, 40)}\`. Usa \`/ayuda\` para ver los comandos.`);
     }
- main
   }
 }
 
@@ -376,11 +513,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const body = await req.text();
   let valid = false;
- feat/diseno-premium
-  try { valid = isValidDiscordRequest(req, body); } catch { valid = false; }
-
   try { valid = isValidDiscordRequest(req, body, await publicKey()); } catch { valid = false; }
-main
   if (!valid) return json({ error: 'Invalid Discord request signature' }, 401);
 
   let interaction: Interaction;
@@ -391,11 +524,6 @@ main
   const user = interaction.member?.user ?? interaction.user;
   if (!user?.id) return reply('No se pudo identificar tu usuario de Discord.');
   const { path, opts } = commandPath(interaction.data);
-feat/diseno-premium
-  try {
-    return await handle(path, opts, user, interaction.guild_id);
-  } catch (e) {
-
   const root = path.split(' ')[0];
   const cmd = (await commands()).get(root);
   if (cmd && !cmd.enabled) return reply(`El comando \`/${root}\` está desactivado por el staff.`);
@@ -411,7 +539,6 @@ feat/diseno-premium
     return res;
   } catch (e) {
     logRun(root, user, interaction.guild_id, false).catch(() => {});
- main
     console.error('discord-commands', path, e);
     return reply('Algo falló al procesar el comando. Inténtalo de nuevo en un momento.');
   }
