@@ -6,6 +6,7 @@
   # VANTS - Plataforma de Esports Premium
   
   [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+  [![Stripe](https://img.shields.io/badge/Stripe-Payments-008CDD?logo=stripe)](https://stripe.com)
   [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com)
   [![Discord](https://img.shields.io/badge/Discord-Bot-5865F2?logo=discord)](https://discord.com)
   [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?template=https://github.com/feispla/VantsportsOficial)
