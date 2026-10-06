@@ -7,35 +7,33 @@ const DISCORD_INVITE = 'https://discord.gg/rCHE7jvRS4';
 
 const GAMES = { valorant: 'VALORANT', cs2: 'Counter-Strike 2', lol: 'League of Legends' };
 
-// Rangos de VALORANT (Riot). El campo rank de la DB guarda el tier actual del jugador
-// (Iron, Bronze, Silver, Gold, Platinum, Diamond, Ascendant, Immortal, Radiant).
-const VALORANT_RANKS = [
-  { name: 'Iron', color: '#8a9099' },
-  { name: 'Bronze', color: '#b87333' },
-  { name: 'Silver', color: '#c9d1d9' },
-  { name: 'Gold', color: '#e5b93c' },
-  { name: 'Platinum', color: '#2ec4b6' },
-  { name: 'Diamond', color: '#9b6bff' },
-  { name: 'Ascendant', color: '#3ddc84' },
-  { name: 'Immortal', color: '#c74a8b' },
-  { name: 'Radiant', color: '#ff4655' },
+// Rango VANTS: 8 niveles (vision/rangos). Umbrales orientativos por MMR.
+const VANTS_RANKS = [
+  { key: 'hierro', name: 'Hierro', min: 0, color: '#8a9099' },
+  { key: 'bronce', name: 'Bronce', min: 900, color: '#b87333' },
+  { key: 'plata', name: 'Plata', min: 1100, color: '#c9d1d9' },
+  { key: 'oro', name: 'Oro', min: 1300, color: '#e5b93c' },
+  { key: 'platino', name: 'Platino', min: 1500, color: '#2ec4b6' },
+  { key: 'diamante', name: 'Diamante', min: 1700, color: '#9b6bff' },
+  { key: 'titan', name: 'Titán', min: 1900, color: '#3ddc84' },
+  { key: 'escarlata', name: 'Escarlata', min: 2100, color: '#ff4655' },
 ];
-function valorantRankColor(rankName) {
-  if (!rankName) return '#8a9099';
-  const base = String(rankName).trim().split(' ')[0].toLowerCase();
-  const r = VALORANT_RANKS.find((x) => x.name.toLowerCase() === base);
-  return r ? r.color : '#8a9099';
+function rankFor(stat) {
+  if (!stat) return VANTS_RANKS[0];
+  const byName = stat.rank && VANTS_RANKS.find((r) => stat.rank.toLowerCase().startsWith(r.key.slice(0, 4)));
+  if (byName) return byName;
+  let r = VANTS_RANKS[0];
+  for (const x of VANTS_RANKS) if ((stat.mmr || 0) >= x.min) r = x;
+  return r;
 }
-// Chip de texto simple con el rango VALORANT del jugador (sin emblemas de fantasía).
 function rankBadge(stat) {
-  const rankName = stat && stat.rank ? String(stat.rank) : 'Unranked';
-  return `<span class="rank-badge" style="--rank:${valorantRankColor(rankName)}">${esc(rankName)}</span>`;
+  const r = rankFor(stat);
+  const icon = window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-badge-emblem') : '<span class="rank-gem"></span>';
+  return `<span class="rank-badge" style="--rank:${r.color}">${icon}${esc(stat && stat.rank ? stat.rank : r.name)}</span>`;
 }
 
 const fmtDate = (d, opts) => d ? new Date(d).toLocaleDateString('es-ES', opts || { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
-// Clave de día en la zona horaria del visitante (antes se usaba UTC y los eventos nocturnos caían en el día siguiente)
-const localDayKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
 const fmtDay = (d) => new Date(d).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
 const initials = (s) => esc(String(s || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || '?');
 
@@ -128,13 +126,20 @@ function eventRow(e) {
 function groupByDay(items, dateKey) {
   const groups = new Map();
   for (const it of items) {
-    const k = localDayKey(it[dateKey]);
+    const d = new Date(it[dateKey]);
+    const k = d.toISOString().slice(0, 10);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(it);
   }
   return [...groups.entries()];
 }
 
+const RANKS_STRIP = `<div class="ranks-strip">${VANTS_RANKS.map((r, i) => `
+  <div class="rank-tile${i >= 5 ? ' rank-tile-elite' : ''}${i === 7 ? ' rank-tile-apex' : ''}" style="--rank:${r.color}">
+    <span class="rank-tier">${window.VantsRanks ? VantsRanks.RANK_ART[r.key].tier : i + 1}</span>
+    <div class="rank-emblem">${window.VantsRanks ? VantsRanks.emblemUse(r.key, 'rank-svg') : ''}</div>
+    <div class="rank-name">${r.name}</div><div class="rank-min">${i === 7 ? 'Top global' : r.min + '+ MMR'}</div>
+  </div>`).join('')}</div>`;
 
 const DISCORD_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>';
 
@@ -226,6 +231,11 @@ const DOC_CONTENT = {
         </div>
       </section>
 
+      <section class="valorant-section">
+        <div class="section-header"><h2>RANGO VANTS</h2></div>
+        <p class="section-lead">Ocho niveles, un recorrido por juego. Ganas VP por victoria, MVP y clutches; cada temporada conservas el 30% del VP acumulado.</p>
+        ${RANKS_STRIP}
+      </section>
 
       <section class="valorant-banner">
         <div class="banner-content">
@@ -278,123 +288,50 @@ const DOC_CONTENT = {
   'calendario': {
     title: 'Calendario — VANTCALL Esports',
     content: `
-      <h1>Calendario</h1>
-      <p class="breadcrumb"><a href="#/inicio">VANTCALL</a> <span>/</span> Calendario ${liveTag()}</p>
-      <div class="cal-toolbar">
-        <div class="cal-nav">
-          <button type="button" class="cal-nav-btn" data-cal-prev aria-label="Mes anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
-          <h2 class="cal-month" data-cal-title aria-live="polite">—</h2>
-          <button type="button" class="cal-nav-btn" data-cal-next aria-label="Mes siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></button>
-          <button type="button" class="btn btn-secondary btn-sm" data-cal-today>Hoy</button>
-        </div>
-        <div class="calendar-filters" role="tablist" aria-label="Filtrar calendario">
-          <button type="button" class="calendar-filter active" data-filter="all" role="tab" aria-selected="true">TODO</button>
-          <button type="button" class="calendar-filter" data-filter="match" role="tab" aria-selected="false"><span class="cal-dot cal-dot-match"></span>PARTIDAS</button>
-          <button type="button" class="calendar-filter" data-filter="event" role="tab" aria-selected="false"><span class="cal-dot cal-dot-event"></span>EVENTOS</button>
-          <button type="button" class="calendar-filter" data-filter="tournament" role="tab" aria-selected="false"><span class="cal-dot cal-dot-tournament"></span>TORNEOS</button>
-        </div>
-
+      ${pageHero('02', 'Calendario', 'Lo que se juega <span class="hero-accent">esta semana</span>', 'Partidas de torneo, scrims, streams y eventos de la comunidad en un solo lugar. Confirma tu asistencia y recibe el aviso en Discord.', '<span class="page-hero-chip">Usa /calendario en Discord</span>')}
+      <div class="calendar-filters" role="tablist">
+        <button class="calendar-filter active" data-filter="all">TODO</button>
+        <button class="calendar-filter" data-filter="match">PARTIDAS</button>
+        <button class="calendar-filter" data-filter="event">EVENTOS</button>
+        <button class="calendar-filter" data-filter="tournament">TORNEOS</button>
       </div>
       <div class="auth-msg" data-page-msg role="status" aria-live="polite" hidden></div>
-      <div class="cal-layout">
-        <div class="cal-grid-wrap" data-cal-grid>${skeleton(5)}</div>
-        <div class="cal-agenda">
-          <div class="cal-agenda-head"><h3 data-cal-agenda-title>Próximos</h3><button type="button" class="link-btn" data-cal-clear hidden>Ver todo el mes</button></div>
-          <div data-async="calendar">${skeleton(4)}</div>
-        </div>
-      </div>
-      <p class="login-note cal-tz">Horas mostradas en tu zona horaria (${esc(Intl.DateTimeFormat().resolvedOptions().timeZone || 'local')}).</p>`,
+      <div data-async="calendar">${skeleton(5)}</div>`,
     async load(main) {
       const DB = window.VantDB;
       const box = main.querySelector('[data-async="calendar"]');
-      const grid = main.querySelector('[data-cal-grid]');
-      const titleEl = main.querySelector('[data-cal-title]');
-      const agendaTitle = main.querySelector('[data-cal-agenda-title]');
-      const clearBtn = main.querySelector('[data-cal-clear]');
-      const tournamentRow = (t) => `<div class="match-card cal-tournament"><div class="match-time">${fmtTime(t.starts_at)}</div><div class="event-body"><div class="event-title">Inicio: ${esc(t.name)}</div><div class="event-sub">${esc(statusLabel(t.format) || 'Torneo')}${t.max_participants ? ` · ${t.current_participants || 0}/${t.max_participants} plazas` : ''}</div></div><div class="match-format">${statusPill(t.status)}<a class="btn btn-secondary btn-sm" href="#/torneo/${encodeURIComponent(t.slug)}">Ver</a></div></div>`;
-      let items = [];
       try {
         const [matches, events, tournaments] = await Promise.all([DB.scheduledMatches(), DB.events(), DB.tournaments()]);
-        items = [
-          ...matches.filter((m) => m.scheduled_at).map((m) => ({ kind: 'match', at: m.scheduled_at, label: `${(m.p1 && (m.p1.display_name || m.p1.username)) || 'TBD'} vs ${(m.p2 && (m.p2.display_name || m.p2.username)) || 'TBD'}`, html: matchRow(m) })),
-          ...events.filter((e) => e.starts_at && e.status !== 'cancelled').map((e) => ({ kind: 'event', at: e.starts_at, label: e.title, html: eventRow(e) })),
-          ...tournaments.filter((t) => t.starts_at && t.status !== 'draft').map((t) => ({ kind: 'tournament', at: t.starts_at, label: t.name, html: tournamentRow(t) })),
+        const items = [
+          ...matches.map((m) => ({ kind: 'match', at: m.scheduled_at, html: matchRow(m) })),
+          ...events.filter((e) => e.starts_at).map((e) => ({ kind: 'event', at: e.starts_at, html: eventRow(e) })),
+          ...tournaments.filter((t) => t.starts_at).map((t) => ({ kind: 'tournament', at: t.starts_at, html: `<div class="match-card"><div class="match-time">${fmtTime(t.starts_at)}</div><div class="event-body"><div class="event-title">Inicio: ${esc(t.name)}</div><div class="event-sub">${esc(t.format || '')}</div></div><div class="match-format">${statusPill(t.status)}<a class="btn btn-secondary btn-sm" href="#/torneo/${encodeURIComponent(t.slug)}">Ver</a></div></div>` })),
         ].sort((a, b) => new Date(a.at) - new Date(b.at));
-      } catch (e) { grid.innerHTML = ''; box.innerHTML = errorState(e); return; }
-
-      const now = new Date();
-      // Arranca en el mes del próximo elemento si el actual está vacío
-      const nextUp = items.find((i) => new Date(i.at) >= new Date(now.getFullYear(), now.getMonth(), now.getDate()));
-      let view = nextUp ? new Date(new Date(nextUp.at).getFullYear(), new Date(nextUp.at).getMonth(), 1) : new Date(now.getFullYear(), now.getMonth(), 1);
-      if (!items.some((i) => { const d = new Date(i.at); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }) && !nextUp) view = new Date(now.getFullYear(), now.getMonth(), 1);
-      let filter = 'all';
-      let selectedDay = null;
-      const todayKey = localDayKey(now);
-      const MONTH = (d) => { const t = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }); return t.charAt(0).toUpperCase() + t.slice(1); };
-
-      const visible = () => items.filter((i) => filter === 'all' || i.kind === filter);
-      const renderGrid = () => {
-        titleEl.textContent = MONTH(view);
-        const first = new Date(view.getFullYear(), view.getMonth(), 1);
-        const offset = (first.getDay() + 6) % 7; // semana empieza en lunes
-        const days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
-        const byDay = new Map();
-        for (const i of visible()) { const k = localDayKey(i.at); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(i); }
-        const cells = [];
-        for (let i = 0; i < offset; i++) cells.push('<div class="cal-cell is-pad" aria-hidden="true"></div>');
-        for (let d = 1; d <= days; d++) {
-          const k = localDayKey(new Date(view.getFullYear(), view.getMonth(), d));
-          const list = byDay.get(k) || [];
-          const kinds = [...new Set(list.map((x) => x.kind))];
-          cells.push(`<button type="button" class="cal-cell${k === todayKey ? ' is-today' : ''}${list.length ? ' has-items' : ''}${selectedDay === k ? ' is-selected' : ''}${k < todayKey ? ' is-past' : ''}" data-day="${k}" ${list.length ? '' : 'tabindex="-1"'} aria-label="${d} ${esc(MONTH(view))}: ${list.length ? list.length + ' elementos' : 'sin elementos'}">
-            <span class="cal-num">${d}</span>
-            ${list.length ? `<span class="cal-items">${list.slice(0, 2).map((x) => `<span class="cal-chip cal-chip-${x.kind}">${esc(x.label)}</span>`).join('')}${list.length > 2 ? `<span class="cal-more">+${list.length - 2}</span>` : ''}</span><span class="cal-dots">${kinds.map((x) => `<span class="cal-dot cal-dot-${x}"></span>`).join('')}</span>` : ''}
-          </button>`);
-        }
-        grid.innerHTML = `<div class="cal-weekdays">${['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((w) => `<span>${w}</span>`).join('')}</div><div class="cal-grid">${cells.join('')}</div>`;
-        grid.querySelectorAll('.cal-cell.has-items').forEach((c) => c.addEventListener('click', () => { selectedDay = selectedDay === c.dataset.day ? null : c.dataset.day; render(); }));
-      };
-      const renderAgenda = () => {
-        let list = visible();
-        if (selectedDay) {
-          list = list.filter((i) => localDayKey(i.at) === selectedDay);
-          agendaTitle.textContent = fmtDay(selectedDay + 'T12:00:00');
-        } else {
-          list = list.filter((i) => { const d = new Date(i.at); return d.getFullYear() === view.getFullYear() && d.getMonth() === view.getMonth(); });
-          agendaTitle.textContent = 'Agenda de ' + view.toLocaleDateString('es-ES', { month: 'long' });
-          agendaTitle.style.textTransform = 'none';
-        }
-        clearBtn.hidden = !selectedDay;
-        if (!list.length) {
-          const upcoming = visible().filter((i) => new Date(i.at) >= now);
-          box.innerHTML = emptyState(items.length ? 'Nada en estas fechas' : 'Calendario vacío', items.length ? (upcoming.length ? `Lo siguiente es el ${fmtDay(upcoming[0].at)}.` : 'No hay nada programado más adelante.') : 'Cuando el staff publique torneos y eventos (desde la web o con /vants en Discord) aparecerán aquí.', items.length && upcoming.length ? '<button type="button" class="btn btn-secondary btn-sm" data-cal-jump>Ir a lo siguiente</button>' : `<a class="btn btn-secondary btn-sm" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Seguir en Discord</a>`);
-          const jump = box.querySelector('[data-cal-jump]');
-          if (jump) jump.addEventListener('click', () => { const d = new Date(upcoming[0].at); view = new Date(d.getFullYear(), d.getMonth(), 1); selectedDay = localDayKey(d); render(); });
-          return;
-        }
-        box.innerHTML = groupByDay(list, 'at').map(([k, arr]) => `
-          <div class="match-day"><div class="match-day-header"><span class="match-day-date">${fmtDay(arr[0].at)}</span>${k === todayKey ? '<span class="match-day-badge">HOY</span>' : k < todayKey ? '<span class="match-day-badge is-past">PASADO</span>' : ''}</div>
-          ${arr.map((i) => i.html).join('')}</div>`).join('');
-        bindRsvp(main);
-      };
-      const render = () => { renderGrid(); renderAgenda(); };
-      main.querySelector('[data-cal-prev]').addEventListener('click', () => { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); selectedDay = null; render(); });
-      main.querySelector('[data-cal-next]').addEventListener('click', () => { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); selectedDay = null; render(); });
-      main.querySelector('[data-cal-today]').addEventListener('click', () => { view = new Date(now.getFullYear(), now.getMonth(), 1); selectedDay = items.some((i) => localDayKey(i.at) === todayKey) ? todayKey : null; render(); });
-      clearBtn.addEventListener('click', () => { selectedDay = null; render(); });
-      main.querySelectorAll('.calendar-filter').forEach((b) => b.addEventListener('click', () => {
-        main.querySelectorAll('.calendar-filter').forEach((x) => { x.classList.remove('active'); x.setAttribute('aria-selected', 'false'); });
-        b.classList.add('active'); b.setAttribute('aria-selected', 'true'); filter = b.dataset.filter; render();
-      }));
-      render();
+        const render = (f) => {
+          const list = items.filter((i) => f === 'all' || i.kind === f);
+          if (!list.length) { box.innerHTML = emptyState('Calendario vacío', 'No hay partidas, eventos ni torneos programados todavía.'); return; }
+          const today = new Date().toISOString().slice(0, 10);
+          box.innerHTML = groupByDay(list, 'at').map(([k, arr]) => `
+            <div class="match-day"><div class="match-day-header"><span class="match-day-date">${fmtDay(arr[0].at)}</span>${k === today ? '<span class="match-day-badge">HOY</span>' : ''}</div>
+            ${arr.map((i) => i.html).join('')}</div>`).join('');
+          bindRsvp(main);
+        };
+        render('all');
+        main.querySelectorAll('.calendar-filter').forEach((b) => b.addEventListener('click', () => {
+          main.querySelectorAll('.calendar-filter').forEach((x) => x.classList.remove('active'));
+          b.classList.add('active'); render(b.dataset.filter);
+        }));
+      } catch (e) { box.innerHTML = errorState(e); }
     },
   },
 
   'ranked': {
     title: 'Ranked — VANTCALL Esports',
     content: `
-      ${pageHero('03', 'Ranked VANTS', 'Tu rango <span class="hero-accent">VALORANT</span> en la liga', 'Cada partida mueve tu MMR. El leaderboard muestra tu rango de VALORANT (Riot) y se actualiza en tiempo real.', '<span class="page-hero-chip">Usa /ranking y /perfil en Discord</span>')}
+      ${pageHero('03', 'Ranked VANTS', 'Sube de <span class="hero-accent">Hierro a Escarlata</span>', 'Cada partida mueve tu MMR. Ocho rangos, temporadas con recompensas y un leaderboard que se actualiza en tiempo real.', '<span class="page-hero-chip">Usa /ranking y /perfil en Discord</span>')}
       <div class="dash-grid" data-async="ranked-season">${skeleton(1)}</div>
+      <h2>Rango VANTS</h2>
+      ${RANKS_STRIP}
       <h2>Leaderboard</h2>
       <div class="rankings-list rankings-full" data-async="ranked-lb">${skeleton(6)}</div>
       <h2>Reglas vigentes</h2>
@@ -435,7 +372,7 @@ const DOC_CONTENT = {
       const box = main.querySelector('[data-async="tournaments"]');
       try {
         const ts = await window.VantDB.tournaments();
-        if (!ts.length) { box.innerHTML = emptyState('Todavía no hay torneos', 'Los organizadores publicarán aquí los torneos de VALORANT, CS2 y LoL. Inscríbete desde la web o con /torneo inscribir en Discord.', `<a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Seguir en Discord</a>`); return; }
+        if (!ts.length) { box.innerHTML = emptyState('Todavía no hay torneos', 'Los organizadores publicarán aquí los torneos de VALORANT, CS2 y LoL. Inscríbete desde la web o con /torneo registrar en Discord.', `<a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Seguir en Discord</a>`); return; }
         const open = ts.filter((t) => ['registration', 'open', 'upcoming', 'in_progress', 'live', 'active'].includes(t.status));
         const past = ts.filter((t) => ['completed', 'finished', 'cancelled', 'closed'].includes(t.status));
         const other = ts.filter((t) => !open.includes(t) && !past.includes(t));
@@ -466,7 +403,7 @@ const DOC_CONTENT = {
               <div class="player-info"><div class="player-name">${esc(p.display_name || p.username)}${p.verified ? ' <span class="verified" title="Verificado">✓</span>' : ''}</div>
               <div class="player-sub">@${esc(p.username)}${p.region ? ' · ' + esc(p.region) : ''}${p.main_game ? ' · ' + esc(GAMES[p.main_game] || p.main_game) : ''}</div></div>
             </a>`).join('')}</div>`
-            : emptyState(qs ? 'Sin resultados' : 'Aún no hay jugadores', qs ? 'Prueba con otro nombre.' : 'Sé el primero: crea tu cuenta con Discord, Google, Steam o correo.', qs ? '' : '<a class="btn btn-primary" href="#/registro">Crear cuenta</a>');
+            : emptyState(qs ? 'Sin resultados' : 'Aún no hay jugadores', qs ? 'Prueba con otro nombre.' : 'Sé el primero: crea tu cuenta con Discord o correo.', qs ? '' : '<a class="btn btn-primary" href="#/registro">Crear cuenta</a>');
         } catch (e) { box.innerHTML = errorState(e); }
       };
       main.querySelector('[data-player-search]').addEventListener('submit', (e) => { e.preventDefault(); run(e.target.q.value.trim()); });
