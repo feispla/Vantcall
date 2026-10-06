@@ -567,11 +567,38 @@ function resolvePage(pageId) {
   return null;
 }
 
+const PAGE_META = {
+  inicio: 'VANTCALL Esports: ranked con MMR real, torneos con premios y ligas de VALORANT, CS2 y League of Legends. Entra gratis con Google, Discord, Steam o correo.',
+  calendario: 'Calendario competitivo de VANTS: próximos torneos, inicios de temporada ranked y partidas programadas de VALORANT, CS2 y League of Legends.',
+  ranked: 'El leaderboard de VANTS: jugadores ordenados por MMR, ocho rangos de Hierro a Escarlata, y cómo subir de nivel en VALORANT, CS2 y LoL.',
+  torneos: 'Torneos de esports con premios reales: VANT Open gratis para todos, Pro Series para miembros PRO y Elite Invitational. Inscripción abierta.',
+  jugadores: 'Perfiles de jugadores de VANTS: MMR, rango, historial de partidas ranked y torneos jugados en VALORANT, CS2 y League of Legends.',
+  precios: 'Planes de VANTS: gratis para jugar ranked, PRO para torneos Pro Series y ELITE para la Zona VIP y el Elite Invitational.',
+};
+
+function setMeta(name, content, attr = 'name') {
+  if (!content) return;
+  let el = document.head.querySelector(`meta[${attr}="${name}"]`);
+  if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+  el.setAttribute('content', content);
+}
+
+function updatePageMeta(pageId, page) {
+  const section = pageId.split('/')[0];
+  const desc = PAGE_META[section] || PAGE_META.inicio;
+  setMeta('description', desc);
+  setMeta('og:title', page.title, 'property');
+  setMeta('og:description', desc, 'property');
+  setMeta('twitter:title', page.title);
+  setMeta('twitter:description', desc);
+}
+
 function renderPage(pageId) {
   const page = resolvePage(pageId);
   if (!page) { window.location.hash = '#/inicio'; return; }
   const main = document.getElementById('main');
   document.title = page.title;
+  updatePageMeta(pageId, page);
   main.innerHTML = `
     <div class="content-wrapper${page.isHome ? ' content-wrapper-home' : ''}">
       <div class="content${page.isHome ? ' content-home' : ''}">${page.content}</div>
