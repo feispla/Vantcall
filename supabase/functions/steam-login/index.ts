@@ -28,11 +28,7 @@ const REQUIRED_SIGNED = ['op_endpoint', 'claimed_id', 'identity', 'return_to', '
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // Solo estos destinos pueden recibir el token. Ampliable con STEAM_LOGIN_REDIRECTS (coma).
-feat/diseno-premium
-const DEFAULT_REDIRECTS = ['https://vantsports.pplx.app/', 'https://vantcall-esports1.pplx.app/', 'vants://auth/callback'];
-
-const DEFAULT_REDIRECTS = ['https://vantsbetaa.pplx.app/', 'https://vantsbeta.pplx.app/', 'https://vantsports.pplx.app/', 'https://vantcall-esports1.pplx.app/', 'https://vantcall-esports.pplx.app/', 'vants://auth/callback'];
- main
+const DEFAULT_REDIRECTS = ['https://feispla.github.io/Vantcall/', 'https://vantsbetaa.pplx.app/', 'https://vantsbeta.pplx.app/', 'https://vantsports.pplx.app/', 'https://vantcall-esports1.pplx.app/', 'https://vantcall-esports.pplx.app/', 'vants://auth/callback'];
 const ALLOWED = [
   ...DEFAULT_REDIRECTS,
   ...(Deno.env.get('STEAM_LOGIN_REDIRECTS') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
