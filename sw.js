@@ -1,10 +1,9 @@
 // VANTS — Service Worker: cache de la app shell para carga rapida y soporte offline basico
-const VERSION = 'vants-v4';
+const VERSION = 'vants-v2';
 const SHELL = [
   './',
   './index.html',
   './bundle.css',
-  './vantcall-cls-fixes.css',
   './app.js',
   './db.js',
   './auth.js',
@@ -14,18 +13,14 @@ const SHELL = [
   './vendor/supabase-2.57.4.min.js',
   './assets/brand/favicon.svg',
   './assets/brand/vants-mark.svg',
-  './assets/hero-arena.webp',
   './privacidad.html',
   './terminos.html',
   './manifest.webmanifest',
 ];
 
 self.addEventListener('install', (event) => {
-  // Precache tolerante: un asset que falle NO rompe la instalacion completa.
   event.waitUntil(
-    caches.open(VERSION)
-      .then((cache) => Promise.allSettled(SHELL.map((u) => cache.add(u))))
-      .then(() => self.skipWaiting())
+    caches.open(VERSION).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
   );
 });
 
@@ -34,15 +29,7 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
-      // Avisar a las pestañas abiertas que hay version nueva para que recarguen.
-      .then(() => self.clients.matchAll({ type: 'window' }))
-      .then((clients) => clients.forEach((c) => c.postMessage({ type: 'SW_UPDATED', version: VERSION })))
   );
-});
-
-// La pagina pide activar el SW nuevo en cuanto esta listo.
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -64,17 +51,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Estaticos: network-first (los despliegues nuevos se ven al instante),
-  // con fallback a cache si no hay conexion.
+  // Estaticos: cache-first, actualiza en segundo plano
   event.respondWith(
-    fetch(event.request)
-      .then((res) => {
+    caches.match(event.request).then((cached) => {
+      const net = fetch(event.request).then((res) => {
         if (res.ok) {
           const copy = res.clone();
           caches.open(VERSION).then((c) => c.put(event.request, copy));
         }
         return res;
-      })
-      .catch(() => caches.match(event.request))
+      }).catch(() => cached);
+      return cached || net;
+    })
   );
 });
