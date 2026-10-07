@@ -613,6 +613,15 @@ function setMeta(name, content, attr = 'name') {
   el.setAttribute('content', content);
 }
 
+function trackPageView(pageId) {
+  if (typeof gtag !== 'function') return;
+  gtag('event', 'page_view', {
+    page_title: document.title,
+    page_location: location.origin + location.pathname + location.hash,
+    page_path: '/' + pageId,
+  });
+}
+
 function updatePageMeta(pageId, page) {
   const section = pageId.split('/')[0];
   const desc = PAGE_META[section] || PAGE_META.inicio;
@@ -629,6 +638,7 @@ function renderPage(pageId) {
   const main = document.getElementById('main');
   document.title = page.title;
   updatePageMeta(pageId, page);
+  trackPageView(pageId);
   main.innerHTML = `
     <div class="content-wrapper${page.isHome ? ' content-wrapper-home' : ''}">
       <div class="content${page.isHome ? ' content-home' : ''}">${page.content}</div>
