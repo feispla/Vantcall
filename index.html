@@ -17,7 +17,7 @@
 
   <link rel="stylesheet" href="./bundle.css">
   <link rel="stylesheet" href="./vantcall-cls-fixes.css">
-  <link rel="preload" as="image" href="./assets/hero-arena.webp" fetchpriority="high">
+  <link rel="preload" as="image" href="./assets/hero-arena.jpg">
 
   <link rel="icon" type="image/svg+xml" href="./assets/brand/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/brand/favicon-32.png">
@@ -142,12 +142,6 @@
 
     <!-- Main content -->
     <main class="main" id="main" tabindex="-1">
-      <!-- LCP hero image: real <img> in initial HTML so the browser fetches it
-           immediately (app.js replaces main's content on render) -->
-      <img src="./assets/hero-arena.webp" alt="" width="1600" height="899"
-           fetchpriority="high" decoding="async"
-           style="position:absolute;inset:0;width:100%;height:60vh;object-fit:cover;z-index:-1;pointer-events:none"
-           aria-hidden="true">
       <!-- Content rendered by app.js -->
     </main>
 
@@ -194,46 +188,14 @@
 
   <script src="./vendor/supabase-2.57.4.min.js" defer></script>
   <script src="./db.js" defer></script>
-  <script src="./ranks.js" defer></script>
   <script src="./app.js" defer></script>
   <script src="./auth.js" defer></script>
   <script src="./zona.js" defer></script>
   <script src="./premium.js" defer></script>
   <script>
-    // Registro del Service Worker con auto-actualizacion:
-    // cuando se publica una version nueva, se instala en segundo plano,
-    // toma el control y recarga la app sin que el jugador haga nada.
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
-          .then((reg) => {
-            // Buscar actualizaciones cada hora mientras la app este abierta.
-            setInterval(() => reg.update(), 60 * 60 * 1000);
-            reg.addEventListener('updatefound', () => {
-              const sw = reg.installing;
-              if (!sw) return;
-              sw.addEventListener('statechange', () => {
-                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-                  sw.postMessage({ type: 'SKIP_WAITING' });
-                }
-              });
-            });
-          })
-          .catch(() => {});
-
-        // El SW aviso que hay version nueva: recargar una sola vez.
-        let reloaded = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (reloaded) return;
-          reloaded = true;
-          location.reload();
-        });
-        navigator.serviceWorker.addEventListener('message', (ev) => {
-          if (ev.data && ev.data.type === 'SW_UPDATED' && !reloaded) {
-            reloaded = true;
-            location.reload();
-          }
-        });
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
       });
     }
   </script>
