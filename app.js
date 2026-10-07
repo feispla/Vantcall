@@ -651,10 +651,38 @@ function renderPage(pageId) {
   if (window.VantAuth) window.VantAuth.afterRender(pageId);
 }
 
-function router() {
-  const hash = window.location.hash.replace('#/', '').split('?')[0];
-  renderPage(hash || 'inicio');
+const BASE = location.pathname.startsWith('/Vantcall') ? '/Vantcall' : '';
+
+function currentRoute() {
+  // Prioridad: hash (#/ruta), luego path real (/Vantcall/ruta)
+  if (location.hash.startsWith('#/')) return location.hash.replace('#/', '').split('?')[0];
+  const p = location.pathname.replace(new RegExp('^' + BASE + '/?'), '').replace(/\/$/, '');
+  return p || 'inicio';
 }
+
+function navigateTo(route) {
+  // URLs limpias: history API; mantiene sincronizado el hash por compatibilidad
+  if (location.pathname !== BASE + '/' + route) {
+    history.pushState(null, '', BASE + '/' + route);
+  }
+  renderPage(route);
+}
+
+function router() {
+  renderPage(currentRoute());
+}
+
+// Interceptar clicks en enlaces internos #/... para navegar sin recargar
+document.addEventListener('click', (ev) => {
+  const a = ev.target.closest('a[href^="#/"]');
+  if (!a) return;
+  const route = a.getAttribute('href').replace(/^#\//, '').split('?')[0];
+  if (!route) return;
+  ev.preventDefault();
+  navigateTo(route);
+});
+
+window.addEventListener('popstate', router);
 
 function initTheme() {
   const toggle = document.querySelector('[data-theme-toggle]');
