@@ -53,7 +53,7 @@ code, pre, .nav-number, .mobile-nav-number {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url('./assets/hero-arena.jpg');
+  background-image: url('./assets/hero-arena.webp');
   background-size: cover;
   background-position: center;
   z-index: -1;
