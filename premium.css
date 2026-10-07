@@ -624,7 +624,7 @@ body::before {
 }
 @property --apex-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 @keyframes apex-spin { to { --apex-angle: 360deg; } }
-@keyframes rank-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+@keyframes rank-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
 /* Insignia de rango en listas y perfiles */
 .rank-badge { padding: 3px 10px 3px 6px; gap: 6px; background: color-mix(in srgb, var(--rank) 10%, transparent); }
