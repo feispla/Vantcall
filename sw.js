@@ -1,5 +1,5 @@
 // VANTS — Service Worker: cache de la app shell para carga rapida y soporte offline basico
-const VERSION = 'vants-v3';
+const VERSION = 'vants-v4';
 const SHELL = [
   './',
   './index.html',
@@ -21,8 +21,11 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
+  // Precache tolerante: un asset que falle NO rompe la instalacion completa.
   event.waitUntil(
-    caches.open(VERSION).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(VERSION)
+      .then((cache) => Promise.allSettled(SHELL.map((u) => cache.add(u))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -31,7 +34,15 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+      // Avisar a las pestañas abiertas que hay version nueva para que recarguen.
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then((clients) => clients.forEach((c) => c.postMessage({ type: 'SW_UPDATED', version: VERSION })))
   );
+});
+
+// La pagina pide activar el SW nuevo en cuanto esta listo.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -53,7 +64,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Estaticos: network-first (asi los despliegues nuevos se ven al instante),
+  // Estaticos: network-first (los despliegues nuevos se ven al instante),
   // con fallback a cache si no hay conexion.
   event.respondWith(
     fetch(event.request)
