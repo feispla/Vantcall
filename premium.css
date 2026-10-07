@@ -409,6 +409,7 @@ body::before {
 }
 /* ELITE: acabado carmesí-ámbar */
 .pricing-elite {
+  overflow: hidden;
   border-color: color-mix(in srgb, var(--elite-b) 45%, var(--color-border));
   box-shadow: none;
   background:
@@ -423,6 +424,9 @@ body::before {
   background: linear-gradient(90deg, var(--elite-a), var(--elite-b), var(--elite-a));
   background-size: 200% 100%;
   animation: eliteSheen 6s linear infinite;
+  will-change: transform;
+  width: 200%;
+  left: -100%;
 }
 .pricing-elite .pricing-price-num,
 .pricing-elite .pricing-tier-name {
@@ -510,7 +514,7 @@ body::before {
 @keyframes heroPulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
 @keyframes scrollCue { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(10px); opacity: 0; } 100% { opacity: 0; } }
 @keyframes marquee { to { transform: translateX(-50%); } }
-@keyframes eliteSheen { to { background-position: 200% 0; } }
+@keyframes eliteSheen { to { transform: translateX(100%); } }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; }
