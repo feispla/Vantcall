@@ -21,6 +21,11 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/brand/favicon-32.png">
   <link rel="apple-touch-icon" href="./assets/brand/apple-touch-icon.png">
   <meta name="theme-color" content="#0b131b">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VANTS">
   <link rel="canonical" href="https://feispla.github.io/Vantcall/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="VANTS">
@@ -176,5 +181,12 @@
   <script src="./auth.js" defer></script>
   <script src="./zona.js" defer></script>
   <script src="./premium.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>
