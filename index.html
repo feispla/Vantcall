@@ -17,7 +17,7 @@
 
   <link rel="stylesheet" href="./bundle.css">
   <link rel="stylesheet" href="./vantcall-cls-fixes.css">
-  <link rel="preload" as="image" href="./assets/hero-arena.jpg">
+  <link rel="preload" as="image" href="./assets/hero-arena.webp" fetchpriority="high">
 
   <link rel="icon" type="image/svg+xml" href="./assets/brand/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/brand/favicon-32.png">
@@ -142,6 +142,12 @@
 
     <!-- Main content -->
     <main class="main" id="main" tabindex="-1">
+      <!-- LCP hero image: real <img> in initial HTML so the browser fetches it
+           immediately (app.js replaces main's content on render) -->
+      <img src="./assets/hero-arena.webp" alt="" width="1600" height="899"
+           fetchpriority="high" decoding="async"
+           style="position:absolute;inset:0;width:100%;height:60vh;object-fit:cover;z-index:-1;pointer-events:none"
+           aria-hidden="true">
       <!-- Content rendered by app.js -->
     </main>
 
