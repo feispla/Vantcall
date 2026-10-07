@@ -558,7 +558,37 @@ function bindRsvp(main) {
 // ROUTER
 // ============================================
 
+let adminScriptPromise = null;
+function loadAdminScript() {
+  if (!adminScriptPromise) {
+    adminScriptPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = './admin.js';
+      s.onload = resolve;
+      s.onerror = () => { adminScriptPromise = null; reject(new Error('No se pudo cargar admin.js')); };
+      document.body.appendChild(s);
+    });
+  }
+  return adminScriptPromise;
+}
+
 function resolvePage(pageId) {
+  if (pageId === 'admin' && !DOC_CONTENT.admin) {
+    return {
+      title: 'Admin — VANTCALL Esports',
+      content: '<div class="adm" data-adm><div class="skeleton-list"><div class="skeleton-row"></div></div></div>',
+      async load(main) {
+        try {
+          await loadAdminScript();
+          const page = DOC_CONTENT.admin;
+          if (page && typeof page.load === 'function') return page.load(main);
+          if (page) main.querySelector('[data-async], [data-adm]') && (main.innerHTML = `<div class="content-wrapper"><div class="content">${page.content}</div></div>`);
+        } catch (e) {
+          main.innerHTML = '<div class="login-page"><h1>Error</h1><p class="login-sub">No se pudo cargar el panel. Recarga la página.</p></div>';
+        }
+      },
+    };
+  }
   if (DOC_CONTENT[pageId]) return DOC_CONTENT[pageId];
   const [head, ...rest] = pageId.split('/');
   const arg = decodeURIComponent(rest.join('/'));
