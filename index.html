@@ -200,9 +200,40 @@
   <script src="./zona.js" defer></script>
   <script src="./premium.js" defer></script>
   <script>
+    // Registro del Service Worker con auto-actualizacion:
+    // cuando se publica una version nueva, se instala en segundo plano,
+    // toma el control y recarga la app sin que el jugador haga nada.
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+          .then((reg) => {
+            // Buscar actualizaciones cada hora mientras la app este abierta.
+            setInterval(() => reg.update(), 60 * 60 * 1000);
+            reg.addEventListener('updatefound', () => {
+              const sw = reg.installing;
+              if (!sw) return;
+              sw.addEventListener('statechange', () => {
+                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+                  sw.postMessage({ type: 'SKIP_WAITING' });
+                }
+              });
+            });
+          })
+          .catch(() => {});
+
+        // El SW aviso que hay version nueva: recargar una sola vez.
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (reloaded) return;
+          reloaded = true;
+          location.reload();
+        });
+        navigator.serviceWorker.addEventListener('message', (ev) => {
+          if (ev.data && ev.data.type === 'SW_UPDATED' && !reloaded) {
+            reloaded = true;
+            location.reload();
+          }
+        });
       });
     }
   </script>
