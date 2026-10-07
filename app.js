@@ -162,7 +162,7 @@ function planCards() {
       <div class="vp-glow" aria-hidden="true"></div>
       ${p.badge ? `<div class="vp-badge">${p.badge}</div>` : ''}
       <header class="vp-head">
-        <img class="vp-emblem" src="./assets/ranks/${p.emblem}.png" alt="" width="64" height="64" loading="lazy">
+        <img class="vp-emblem" src="./assets/ranks/${p.emblem}.svg" alt="" width="64" height="64" loading="lazy">
         <div><div class="vp-tier">${p.tier} · VANT</div><h3 class="vp-name">${p.name}</h3><div class="vp-tag">${p.tag}</div></div>
       </header>
       <div class="vp-price"><span class="vp-cur">€</span><span class="vp-num">${p.price}</span><span class="vp-per">pago único<br>toda la temporada</span></div>
