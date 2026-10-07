@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VANTS — Plataforma competitiva de esports: ranked, torneos y ligas</title>
+  <meta name="description" content="VANTCALL Esports: ranked con MMR real, torneos con premios y ligas de VALORANT, CS2 y League of Legends. Entra gratis con Google, Discord, Steam o correo.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,600,700,800,900&f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./base.css">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./premium.css">
+  <link rel="stylesheet" href="./vip.css">
+  <link rel="preload" as="image" href="./assets/hero-arena.jpg">
+
+  <link rel="icon" type="image/svg+xml" href="./assets/brand/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/brand/favicon-32.png">
+  <link rel="apple-touch-icon" href="./assets/brand/apple-touch-icon.png">
+  <meta name="theme-color" content="#0b131b">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VANTS">
+  <link rel="canonical" href="https://feispla.github.io/Vantcall/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="VANTS">
+  <meta property="og:title" content="VANTS — Plataforma competitiva de esports: ranked, torneos y ligas">
+  <meta property="og:description" content="Ranked con MMR real, torneos con premios y ligas de VALORANT, CS2 y League of Legends. Entra gratis con Google, Discord, Steam o correo.">
+  <meta property="og:url" content="https://feispla.github.io/Vantcall/">
+  <meta property="og:image" content="https://feispla.github.io/Vantcall/assets/brand/og-vants.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="es_ES">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="VANTS — Plataforma competitiva de esports: ranked, torneos y ligas">
+  <meta name="twitter:description" content="Ranked con MMR real, torneos con premios y ligas de VALORANT, CS2 y League of Legends. Entra gratis con Google, Discord, Steam o correo.">
+  <meta name="twitter:image" content="https://feispla.github.io/Vantcall/assets/brand/og-vants.jpg">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://feispla.github.io/Vantcall/#org",
+        "name": "VANTS",
+        "alternateName": "VANTCALL Esports",
+        "url": "https://feispla.github.io/Vantcall/",
+        "logo": "https://feispla.github.io/Vantcall/assets/brand/vants-mark-1024.png",
+        "description": "Plataforma competitiva de esports: ranked con MMR, torneos con premios y ligas de VALORANT, CS2 y League of Legends.",
+        "sameAs": [
+          "https://discord.gg/rCHE7jvRS4",
+          "https://x.com/feispla",
+          "https://kick.com/feispla"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://feispla.github.io/Vantcall/#site",
+        "url": "https://feispla.github.io/Vantcall/",
+        "name": "VANTS",
+        "publisher": { "@id": "https://feispla.github.io/Vantcall/#org" },
+        "inLanguage": "es"
+      },
+      {
+        "@type": "SportsOrganization",
+        "@id": "https://feispla.github.io/Vantcall/#league",
+        "name": "VANTS Liga Competitiva",
+        "sport": "eSports",
+        "url": "https://feispla.github.io/Vantcall/",
+        "parentOrganization": { "@id": "https://feispla.github.io/Vantcall/#org" }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#content-area" class="skip-link">Saltar al contenido</a>
+
+  <div class="layout">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <button class="menu-toggle" aria-label="Abrir menú" id="menu-toggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <a href="#/inicio" class="logo">
+          <img src="./assets/brand/vants-mark.svg" alt="" width="30" height="30">
+          VANTS
+        </a>
+      </div>
+
+      <!-- Main horizontal nav -->
+      <nav class="main-nav" aria-label="Navegación principal">
+        <a href="#/inicio" class="nav-item"><span class="nav-number">01</span> INICIO</a>
+        <a href="#/calendario" class="nav-item"><span class="nav-number">02</span> CALENDARIO</a>
+        <a href="#/ranked" class="nav-item"><span class="nav-number">03</span> RANKED</a>
+        <a href="#/torneos" class="nav-item"><span class="nav-number">04</span> TORNEOS</a>
+        <a href="#/jugadores" class="nav-item"><span class="nav-number">05</span> JUGADORES</a>
+        <a href="#/precios" class="nav-item"><span class="nav-number">06</span> PRECIOS</a>
+        <a href="#/zona" class="nav-item nav-item-zona" data-zona-link><span class="nav-number">07</span> ZONA VIP</a>
+      </nav>
+
+      <!-- Mobile nav -->
+      <nav class="mobile-nav" id="mobile-nav" aria-label="Navegación móvil">
+        <a href="#/inicio" class="mobile-nav-item"><span class="mobile-nav-number">01</span> INICIO</a>
+        <a href="#/calendario" class="mobile-nav-item"><span class="mobile-nav-number">02</span> CALENDARIO</a>
+        <a href="#/ranked" class="mobile-nav-item"><span class="mobile-nav-number">03</span> RANKED</a>
+        <a href="#/torneos" class="mobile-nav-item"><span class="mobile-nav-number">04</span> TORNEOS</a>
+        <a href="#/jugadores" class="mobile-nav-item"><span class="mobile-nav-number">05</span> JUGADORES</a>
+        <a href="#/precios" class="mobile-nav-item"><span class="mobile-nav-number">06</span> PRECIOS</a>
+        <a href="#/zona" class="mobile-nav-item" data-zona-link><span class="mobile-nav-number">07</span> ZONA VIP</a>
+      </nav>
+
+      <div class="header-right">
+        <a href="#/admin" class="header-link header-admin" id="admin-link" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/></svg>
+          <span>Admin</span>
+        </a>
+        <a href="#/login" class="header-link" id="auth-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+          <span id="auth-link-label">Login</span>
+        </a>
+        <button class="theme-toggle" data-theme-toggle aria-label="Cambiar tema"></button>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="main" id="main" tabindex="-1">
+      <!-- Content rendered by app.js -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-grid">
+        <div class="footer-col footer-brand">
+          <div class="footer-logo">
+            <img src="./assets/brand/vants-mark.svg" alt="" width="30" height="30">
+            <span>VANTS</span>
+          </div>
+          <p>VANTS · circuito competitivo.<br>Ranked, torneos, calendario y eventos.</p>
+        </div>
+        <div class="footer-col">
+          <div class="footer-heading">ESCENAS</div>
+          <a href="#/calendario">Calendario</a>
+          <a href="#/jugadores">Jugadores</a>
+          <a href="#/ranked">Ranked</a>
+          <a href="#/inicio">Acerca</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-heading">PLATAFORMA</div>
+          <a href="#/login">Iniciar sesión</a>
+          <a href="#/precios">Precios</a>
+          <a href="#/torneos">Torneos</a>
+          <a href="#/registro">Registro</a>
+          <a href="#/zona">Zona VIP</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-heading">SEÑAL</div>
+          <a href="mailto:feispla@hotmail.com">feispla@hotmail.com</a>
+          <a href="https://x.com/feispla" target="_blank" rel="noopener noreferrer">X @vantcalls</a>
+          <a href="https://kick.com/feispla" target="_blank" rel="noopener noreferrer">Kick / feispla</a>
+          <a href="https://discord.gg/rCHE7jvRS4" target="_blank" rel="noopener noreferrer">Discord oficial</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>VANTS — Plataforma competitiva · Pagos con Stripe</p>
+        <p class="footer-legal-links"><a href="./privacidad.html">Política de Privacidad</a> · <a href="./terminos.html">Condiciones del Servicio</a></p>
+        <p class="footer-legal">VANTS no está afiliada a Riot Games ni a Valve. VALORANT y League of Legends son marcas de Riot Games, Inc. Counter-Strike es una marca de Valve Corporation.</p>
+      </div>
+    </footer>
+  </div>
+
+  <script src="./vendor/supabase-2.57.4.min.js" defer></script>
+  <script src="./db.js" defer></script>
+  <script src="./app.js" defer></script>
+  <script src="./auth.js" defer></script>
+  <script src="./zona.js" defer></script>
+  <script src="./premium.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
