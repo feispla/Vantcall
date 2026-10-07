@@ -1,5 +1,5 @@
 // VANTS — Service Worker: cache de la app shell para carga rapida y soporte offline basico
-const VERSION = 'vants-v5';
+const VERSION = 'vants-v6';
 const SHELL = [
   './',
   './index.html',
@@ -52,7 +52,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Estaticos: cache-first, actualiza en segundo plano
+  // CSS y JS: network-first, para no servir versiones viejas del cache.
+  if (/\.(css|js)$/.test(url.pathname)) {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(VERSION).then((c) => c.put(event.request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Resto de estaticos: cache-first, actualiza en segundo plano
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const net = fetch(event.request).then((res) => {
