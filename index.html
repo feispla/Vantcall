@@ -2,7 +2,7 @@
 <html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>VANTS — Plataforma competitiva de esports: ranked, torneos y ligas</title>
   <meta name="description" content="VANTCALL Esports: ranked con MMR real, torneos con premios y ligas de VALORANT, CS2 y League of Legends. Entra gratis con Google, Discord, Steam o correo.">
 
@@ -199,9 +199,44 @@
   <script src="./zona.js" defer></script>
   <script src="./premium.js" defer></script>
   <script>
+    // Registro robusto del Service Worker y soporte PWA install flow
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      window.addEventListener('load', async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+          console.log('ServiceWorker registrado', reg);
+
+          // Si hay un worker esperando a activarse, notificar a la app para que ofrezca "Actualizar"
+          if (reg.waiting) {
+            document.dispatchEvent(new CustomEvent('swUpdated', { detail: { registration: reg } }));
+          }
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                document.dispatchEvent(new CustomEvent('swUpdated', { detail: { registration: reg } }));
+              }
+            });
+          });
+
+          // Auto-reload when the new SW takes control
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+          });
+        } catch (err) {
+          console.error('No se pudo registrar el ServiceWorker:', err);
+        }
+      });
+
+      // Capturamos el evento beforeinstallprompt para poder mostrar UI personalizada
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPrompt = e; // la app puede llamar a window.deferredPrompt.prompt()
+        document.dispatchEvent(new CustomEvent('pwaInstallAvailable'));
       });
     }
   </script>
