@@ -5,11 +5,15 @@
   "start_url": "/Vantcall/",
   "scope": "/Vantcall/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#0b131b",
   "theme_color": "#0b131b",
   "lang": "es",
-  "categories": ["games", "sports", "entertainment"],
+  "categories": [
+    "games",
+    "sports",
+    "entertainment"
+  ],
   "icons": [
     {
       "src": "/Vantcall/assets/brand/vants-mark-192.png",
@@ -24,7 +28,7 @@
       "purpose": "any"
     },
     {
-      "src": "/Vantcall/assets/brand/vants-mark-512.png",
+      "src": "/Vantcall/assets/brand/vants-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -38,6 +42,46 @@
       "src": "/Vantcall/assets/brand/favicon-32.png",
       "sizes": "32x32",
       "type": "image/png"
+    }
+  ],
+  "id": "/Vantcall/",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "shortcuts": [
+    {
+      "name": "Torneos",
+      "short_name": "Torneos",
+      "url": "/Vantcall/torneos.html",
+      "icons": [
+        {
+          "src": "/Vantcall/assets/brand/vants-mark-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Ranked",
+      "short_name": "Ranked",
+      "url": "/Vantcall/ranked.html",
+      "icons": [
+        {
+          "src": "/Vantcall/assets/brand/vants-mark-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Calendario",
+      "short_name": "Calendario",
+      "url": "/Vantcall/calendario.html",
+      "icons": [
+        {
+          "src": "/Vantcall/assets/brand/vants-mark-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
