@@ -1,13 +1,15 @@
 // VANTS — Service Worker: cache de la app shell para carga rapida y soporte offline basico (mejorado)
-const VERSION = 'vants-v6';
+const VERSION = 'vants-v7';
 const SHELL = [
   './',
   './index.html',
   './offline.html',
   './bundle.css',
   './vantcall-cls-fixes.css',
+  './spotify.css',
   './app.js',
   './db.js',
+  './spotify-player.js',
   './auth.js',
   './zona.js',
   './premium.js',
