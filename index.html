@@ -4,7 +4,7 @@
     <!-- Google Tag Manager -->
       
       <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MZPW89N2');</script>
-        <!-- End Google Tag Manager -->-->
+        <!-- End Google Tag Manager -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>VANTS — Plataforma competitiva de esports: ranked, torneos y ligas</title>
@@ -19,9 +19,9 @@
     <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,600,700,800,900&f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet">
   </noscript>
 
-  <link rel="stylesheet" href="./bundle.css?v=3">
-  <link rel="stylesheet" href="./vantcall-cls-fixes.css?v=3">
-  <link rel="stylesheet" href="./spotify.css?v=1">
+  <link rel="stylesheet" href="./bundle.css?v=8">
+  <link rel="stylesheet" href="./vantcall-cls-fixes.css?v=8">
+  <link rel="stylesheet" href="./spotify.css?v=8">
   <link rel="preload" as="image" href="./assets/hero-arena.jpg">
 
   <link rel="icon" type="image/svg+xml" href="./assets/brand/favicon.svg">
@@ -197,20 +197,20 @@
     </footer>
   </div>
 
-  <script src="./vendor/supabase-2.57.4.min.js" defer></script>
-  <script src="./db.js" defer></script>
-  <script src="./app.js" defer></script>
-  <script src="./spotify-player.js" defer></script>
-  <script src="./auth.js" defer></script>
-  <script src="./zona.js" defer></script>
-  <script src="./premium.js" defer></script>
+  <script src="./vendor/supabase-2.57.4.min.js?v=8" defer></script>
+  <script src="./db.js?v=8" defer></script>
+  <script src="./app.js?v=8" defer></script>
+  <script src="./spotify-player.js?v=8" defer></script>
+  <script src="./auth.js?v=8" defer></script>
+  <script src="./zona.js?v=8" defer></script>
+  <script src="./premium.js?v=8" defer></script>
   <script>
     const installBtn = document.getElementById('pwa-install-btn');
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
         try {
-          const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+          const reg = await navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' });
           if (reg.waiting) {
             document.dispatchEvent(new CustomEvent('swUpdated', { detail: { registration: reg } }));
           }
