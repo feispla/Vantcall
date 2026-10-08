@@ -48,7 +48,7 @@ VANTS is a complete esports platform for Discord communities:
 
 ### Autenticación & Acceso
 - ✅ **Supabase Auth** con correo + contraseña (verificación por email, recuperación)
-- ✅ **OAuth:** Google, Discord (PKCE flow)
+- ✅ **OAuth:** Google, Discord, GitHub, Twitch y Spotify (PKCE flow)
 - ✅ **Steam:** OpenID 2.0 vía Edge Functions
 - ✅ **Riot Games:** vinculación de cuentas para Valorant
 
@@ -198,6 +198,17 @@ VantsportsOficial/
 - **Discord Client ID:** `1552959749891297320`
 - **Discord Redirect:** `https://qtetsgwwsvqzquxssudj.supabase.co/auth/v1/callback`
 - **Google Cloud Redirect:** `https://qtetsgwwsvqzquxssudj.supabase.co/auth/v1/callback`
+- Activa **GitHub**, **Twitch** y **Spotify** en Supabase → Authentication → Sign In / Providers e introduce el Client ID/Secret de cada app. No guardes esos secretos en este repositorio.
+- En GitHub OAuth Apps, Twitch Developer Console y Spotify Developer Dashboard configura como callback `https://<PROJECT_REF>.supabase.co/auth/v1/callback`.
+- Autoriza los dominios públicos de la web en Supabase → Authentication → URL Configuration → Redirect URLs. En el login se solicitan los scopes `read:user user:email` para GitHub y `user:read:email` para Twitch.
+
+### Spotify
+
+- Activa Spotify en **Supabase → Authentication → Sign In / Providers** y configura el Client ID y Client Secret de tu aplicación de Spotify. El callback del proveedor es `https://<PROJECT_REF>.supabase.co/auth/v1/callback`.
+- Añade ese callback en la lista de Redirect URIs de Spotify y añade los dominios públicos de la web en la lista de Redirect URLs de Supabase Auth. El Web Playback SDK requiere HTTPS (excepto localhost).
+- El login y la vinculación piden los permisos `streaming`, `user-modify-playback-state`, `user-read-playback-state`, `user-read-currently-playing`, `user-read-email` y `user-read-private`.
+- El reproductor usa el token OAuth temporal devuelto por Supabase; no pongas el Client Secret ni tokens en el frontend. El usuario necesita Spotify Premium para reproducir desde el Web Playback SDK.
+- Para escuchar, inicia sesión con Spotify (o vincúlalo desde Mi cuenta), abre **Mi cuenta** y pega una URI o enlace de canción, álbum o playlist de Spotify.
 
 ---
 
