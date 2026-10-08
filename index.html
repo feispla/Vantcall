@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,600,700,800,900&f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500,600&display=swap" rel="stylesheet">
     <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,600,700,800,900&f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet">
   </noscript>
 
@@ -23,6 +23,15 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/brand/favicon-32.png">
   <link rel="apple-touch-icon" href="./assets/brand/apple-touch-icon.png">
   <meta name="theme-color" content="#0b131b">
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VANTS">
+  <meta name="application-name" content="VANTS">
+  <link rel="canonical" href="https://feispla.github.io/Vantcall/">
+
   <!-- Google Analytics (GA4) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-1DZQTTK7XX"></script>
   <script>
@@ -38,12 +47,6 @@
   </script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
 
-  <link rel="manifest" href="./manifest.webmanifest">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="VANTS">
-  <link rel="canonical" href="https://feispla.github.io/Vantcall/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="VANTS">
   <meta property="og:title" content="VANTS — Plataforma competitiva de esports: ranked, torneos y ligas">
@@ -98,8 +101,9 @@
 <body>
   <a href="#main" class="skip-link">Saltar al contenido</a>
 
+  <button id="pwa-install-btn" type="button" aria-label="Instalar VANTS" style="display:none; position:fixed; right:16px; bottom:20px; z-index:9999; padding:12px 16px; border:0; border-radius:999px; background:#0ea5e9; color:white; box-shadow:0 12px 30px rgba(14,165,233,.35); font-weight:700; cursor:pointer;">Instalar app</button>
+
   <div class="layout">
-    <!-- Header -->
     <header class="header">
       <div class="header-left">
         <button class="menu-toggle" aria-label="Abrir menú" id="menu-toggle">
@@ -111,7 +115,6 @@
         </a>
       </div>
 
-      <!-- Main horizontal nav -->
       <nav class="main-nav" aria-label="Navegación principal">
         <a href="#/inicio" class="nav-item"><span class="nav-number">01</span> INICIO</a>
         <a href="#/calendario" class="nav-item"><span class="nav-number">02</span> CALENDARIO</a>
@@ -122,7 +125,6 @@
         <a href="#/zona" class="nav-item nav-item-zona" data-zona-link><span class="nav-number">07</span> ZONA VIP</a>
       </nav>
 
-      <!-- Mobile nav -->
       <nav class="mobile-nav" id="mobile-nav" aria-label="Navegación móvil">
         <a href="#/inicio" class="mobile-nav-item"><span class="mobile-nav-number">01</span> INICIO</a>
         <a href="#/calendario" class="mobile-nav-item"><span class="mobile-nav-number">02</span> CALENDARIO</a>
@@ -146,12 +148,10 @@
       </div>
     </header>
 
-    <!-- Main content -->
     <main class="main" id="main" tabindex="-1">
       <!-- Content rendered by app.js -->
     </main>
 
-    <!-- Footer -->
     <footer class="footer">
       <div class="footer-grid">
         <div class="footer-col footer-brand">
@@ -199,28 +199,25 @@
   <script src="./zona.js" defer></script>
   <script src="./premium.js" defer></script>
   <script>
-    // Registro robusto del Service Worker y soporte PWA install flow
+    const installBtn = document.getElementById('pwa-install-btn');
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
         try {
           const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
-          console.log('ServiceWorker registrado', reg);
-
-          // Si hay un worker esperando a activarse, notificar a la app para que ofrezca "Actualizar"
           if (reg.waiting) {
             document.dispatchEvent(new CustomEvent('swUpdated', { detail: { registration: reg } }));
           }
 
           reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
-            newWorker.addEventListener('statechange', () => {
+            newWorker?.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                 document.dispatchEvent(new CustomEvent('swUpdated', { detail: { registration: reg } }));
               }
             });
           });
 
-          // Auto-reload when the new SW takes control
           let refreshing = false;
           navigator.serviceWorker.addEventListener('controllerchange', () => {
             if (refreshing) return;
@@ -232,13 +229,22 @@
         }
       });
 
-      // Capturamos el evento beforeinstallprompt para poder mostrar UI personalizada
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        window.deferredPrompt = e; // la app puede llamar a window.deferredPrompt.prompt()
+      window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        window.deferredPrompt = event;
+        installBtn.style.display = 'block';
         document.dispatchEvent(new CustomEvent('pwaInstallAvailable'));
       });
     }
+
+    installBtn?.addEventListener('click', async () => {
+      if (!window.deferredPrompt) return;
+      window.deferredPrompt.prompt();
+      const { outcome } = await window.deferredPrompt.userChoice;
+      console.log('PWA install outcome:', outcome);
+      installBtn.style.display = 'none';
+      window.deferredPrompt = null;
+    });
   </script>
 </body>
 </html>
