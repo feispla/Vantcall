@@ -1,4 +1,4 @@
-
+ 
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/feispla/VantsportsOficial/main/assets/brand/vants-lockup-light.png" alt="VANTS Logo" width="400" />
@@ -32,7 +32,6 @@ Deploy VANTS Discord bot on Railway in one click. Just set your environment vari
 ---
 
 ## 🎮 About VANTS
-main
 
 VANTS is a complete esports platform for Discord communities:
 
@@ -96,7 +95,6 @@ VantsportsOficial/
 │   ├── utils/             # health.py (healthcheck HTTP), supabase_client.py
 │   └── requirements.txt
 ├── supabase/
- fix/bot-main-readme
 │   ├── functions/         # Edge Functions
 │   │   ├── steam-login/
 │   │   ├── discord-commands/
@@ -111,26 +109,6 @@ VantsportsOficial/
     ├── ranks/             # 8 emblemas de rango premium
     └── BRAND.md           # Guía de marca
 ```
-
-│ ├── functions/ # Edge Functions
-│ │ ├── stripe-webhook/
-│ │ ├── link-steam-start/
-│ │ ├── link-steam-callback/
-│ │ ├── unlink-steam/
-│ │ ├── discord-commands/
-│ │ ├── discord-admin/
-│ │ └── discord-notify/
-│ ├── schema.sql # Estructura de BD
-│ ├── seed.sql # Datos iniciales
-│ └── migrations/ # Migraciones
-├── assets/
-│ ├── brand/ # Logo, favicon, iconos
-│ └── ranks/ # 8 emblemas de rango premium
-└── docs/
-└── BRAND.md # Guía de marca
-
-text
- main
 
 ---
 
@@ -168,13 +146,12 @@ text
 | Comando | Descripción |
 |---------|-------------|
 | `/vincular riot` | Vincula cuenta de Riot Games al perfil |
- fix/bot-main-readme
 | `/perfil` | Muestra el perfil VANTS del jugador |
 | `/valorant ranking` | Top 10 de Valorant |
 | `/valorant perfil` | Stats de Valorant de un jugador |
 | `/setup` | Configura los canales del servidor (solo administradores) |
 
-**HTTP Interactions (Edge Function `discord-commands`)**: `/ayuda`, `/zona`, `/web`, `/vincular`, `/perfil`, `/ranking`, `/torneos`, `/torneo inscribir`, `/eventos`, `/calendario`, `/planes` y los comandos de staff `/vants ...`. El catálogo se gestiona en la tabla `bot_commands`.
+**HTTP Interactions (Edge Function `discord-commands`)**: `/ayuda`, `/zona`, `/web`, `/vincular`, `/perfil`, `/ranking`, `/torneos`, `/torneo inscribir`, `/eventos`, `/calendario`, `/planes` y lo[...] 
 
 **Panel admin web (Edge Function `discord-admin`)**: acciones `status`, `connect`, `sync` y `announce`, que requieren un usuario de `web_admins`. No son comandos slash.
 
@@ -185,7 +162,6 @@ text
 | `/connect` | Conecta el servidor con VANTS (guarda token en Vault) |
 | `/sync` | Sincroniza datos de torneos y jugadores |
 | `/announce` | Publica anuncios en canales configurados |
- main
 
 ### Implementación
 
