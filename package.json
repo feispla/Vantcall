@@ -1,0 +1,23 @@
+{
+  "name": "vantcall",
+  "version": "1.0.0",
+  "description": "VANTS - Plataforma competitiva de esports: ranked, torneos y ligas",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "esports",
+    "gaming",
+    "tournaments",
+    "ranked",
+    "valorant",
+    "cs2",
+    "league-of-legends"
+  ],
+  "author": "VANTS",
+  "license": "ISC",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}

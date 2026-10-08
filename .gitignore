@@ -2,3 +2,4 @@
 screenshot-*.png
 __pycache__/
 *.py[cod]
+node_modules/
