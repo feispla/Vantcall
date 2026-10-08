@@ -1,5 +1,5 @@
 // ============================================
-// VANTCALL Esports — Auth (Supabase: correo, Discord, Google y Steam) + cuenta + zona de plan + Stripe
+// VANTCALL Esports — Auth (Supabase: correo, Discord, Google, Steam y Spotify) + cuenta + zona de plan + Stripe
 // Usa el cliente compartido de db.js (proyecto qtetsgwwsvqzquxssudj)
 // ============================================
 (function () {
@@ -21,6 +21,7 @@
   let session = null;
   let me = null; // { player, discord, plan, profile, steam, perks }
   let providers = null;
+  let spotifyPlayer = null;
 
   const mem = new Map();
   const flags = { get: (k) => (mem.has(k) ? mem.get(k) : null), set: (k, v) => mem.set(k, String(v)), del: (k) => mem.delete(k) };
@@ -145,13 +146,19 @@
   const ICON_DISCORD = typeof DISCORD_SVG === 'string' ? DISCORD_SVG : '';
   const ICON_GOOGLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.29 14.29A7.2 7.2 0 0 1 4.91 12c0-.8.14-1.57.38-2.29v-3.1H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.1z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.61l4.01 3.1C6.23 6.88 8.88 4.77 12 4.77z"/></svg>';
   const ICON_STEAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.98 0C5.67 0 .5 4.86.02 11.04l6.43 2.66a3.38 3.38 0 0 1 1.92-.6l.19.01 2.86-4.15v-.06a4.52 4.52 0 1 1 4.52 4.52h-.1l-4.08 2.91v.16a3.39 3.39 0 0 1-6.72.63L.4 15.5A12 12 0 1 0 11.98 0zM7.54 18.21l-1.47-.61a2.54 2.54 0 1 0 1.39-3.46l1.52.63a1.87 1.87 0 1 1-1.44 3.44zm11.42-9.3a3.02 3.02 0 1 0-6.03 0 3.02 3.02 0 0 0 6.03 0zm-5.27 0a2.26 2.26 0 1 1 4.53 0 2.26 2.26 0 0 1-4.53 0z"/></svg>';
+  const ICON_SPOTIFY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0a12 12 0 1 0 0 24 12 12 0 0 0 0-24Zm5.5 17.3a.75.75 0 0 1-1.03.25c-2.82-1.72-6.38-2.1-10.56-1.15a.75.75 0 1 1-.33-1.46c4.58-1.04 8.52-.59 11.67 1.33.35.21.46.67.25 1.03Zm1.47-3.27a.94.94 0 0 1-1.29.31c-3.23-1.99-8.15-2.57-11.97-1.41a.94.94 0 1 1-.55-1.8c4.36-1.32 9.78-.68 13.5 1.61.44.27.58.85.31 1.29Zm.13-3.4C15.23 8.3 8.82 8.1 5.1 9.23a1.13 1.13 0 0 1-.66-2.16c4.27-1.3 11.37-1.05 15.86 1.62a1.13 1.13 0 1 1-1.2 1.94Z"/></svg>';
+  const ICON_GITHUB = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.76-.24.76-.54v-2.1c-3.1.67-3.76-1.32-3.76-1.32-.5-1.28-1.23-1.62-1.23-1.62-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 .1.76 2.62 3.85 1.87.1-.72.4-1.22.7-1.5-2.48-.28-5.09-1.25-5.09-5.54 0-1.22.44-2.22 1.15-3-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.08 1.15a10.7 10.7 0 0 1 5.6 0c2.14-1.45 3.07-1.15 3.07-1.15.61 1.54.23 2.68.12 2.96.72.78 1.14 1.78 1.14 3.01 0 4.3-2.62 5.25-5.11 5.53.4.35.75 1.03.75 2.08v3.12c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg>';
+  const ICON_TWITCH = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 2 2 6v14h5v3h3l3-3h4l5-5V2H4Zm16 12-3 3h-5l-3 3v-3H5V4h15v10ZM11 7h2v6h-2V7Zm5 0h2v6h-2V7Z"/></svg>';
   const METHOD_BUTTONS = (verb) => `
         <div class="login-methods">
           <button type="button" class="login-btn login-btn-google" data-oauth="google">${ICON_GOOGLE} ${verb} con Google</button>
           <button type="button" class="login-btn login-btn-discord" data-oauth="discord">${ICON_DISCORD} ${verb} con Discord</button>
           <button type="button" class="login-btn login-btn-steam" data-oauth="steam">${ICON_STEAM} ${verb} con Steam</button>
+          <button type="button" class="login-btn login-btn-github" data-oauth="github">${ICON_GITHUB} ${verb} con GitHub</button>
+          <button type="button" class="login-btn login-btn-twitch" data-oauth="twitch">${ICON_TWITCH} ${verb} con Twitch</button>
+          <button type="button" class="login-btn login-btn-spotify" data-oauth="spotify">${ICON_SPOTIFY} ${verb} con Spotify</button>
         </div>`;
-  const PROVIDER_NAME = { email: 'Correo', discord: 'Discord', google: 'Google', steam: 'Steam' };
+  const PROVIDER_NAME = { email: 'Correo', discord: 'Discord', google: 'Google', steam: 'Steam', github: 'GitHub', twitch: 'Twitch', spotify: 'Spotify' };
   const STEAM_ERRORS = {
     cancelled: 'Cancelaste el inicio con Steam.',
     verification_failed: 'Steam no pudo verificar tu identidad. Inténtalo de nuevo.',
@@ -170,7 +177,7 @@
       content: `
       <div class="login-page">
         <h1>Iniciar sesión</h1>
-        <p class="login-sub">Accede con Google, Discord, Steam o tu correo</p>
+        <p class="login-sub">Accede con Google, Discord, Steam, GitHub, Twitch, Spotify o tu correo</p>
         <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
 ${METHOD_BUTTONS('Continuar')}
         <div class="login-divider"><span>o con correo</span></div>
@@ -186,7 +193,7 @@ ${METHOD_BUTTONS('Continuar')}
           <div class="login-form-actions"><span></span><a href="#/recuperar">¿Olvidaste tu contraseña?</a></div>
           <button type="submit" class="btn btn-primary login-submit">Iniciar sesión</button>
         </form>
-        <p class="login-note">VANTS nunca te pedirá tu contraseña de Google, Discord o Steam: el acceso ocurre en su propia web y tu sesión la gestiona Supabase Auth.</p>
+        <p class="login-note">VANTS nunca te pedirá tu contraseña de Google, Discord, Steam o Spotify: el acceso ocurre en su propia web y tu sesión la gestiona Supabase Auth.</p>
         <p class="login-switch">¿No tienes cuenta? <a href="#/registro">Regístrate gratis</a></p>
       </div>`,
     },
@@ -309,7 +316,13 @@ ${METHOD_BUTTONS('Registrarse')}
   if (typeof DOC_CONTENT === 'object') Object.assign(DOC_CONTENT, PAGES);
 
   // ---------- acciones ----------
-  const OAUTH_OPTS = { discord: { scopes: 'identify email', queryParams: { prompt: 'consent' } }, google: { queryParams: { prompt: 'select_account' } } };
+  const OAUTH_OPTS = {
+    discord: { scopes: 'identify email', queryParams: { prompt: 'consent' } },
+    google: { queryParams: { prompt: 'select_account' } },
+    github: { scopes: 'read:user user:email' },
+    twitch: { scopes: 'user:read:email' },
+    spotify: { scopes: 'user-read-email user-read-private streaming user-modify-playback-state user-read-playback-state user-read-currently-playing' },
+  };
   const topGo = (url) => { try { window.top.location.href = url; } catch (_) { window.location.href = url; } };
 
   async function oauth(provider, msgEl) {
@@ -523,6 +536,9 @@ ${METHOD_BUTTONS('Registrarse')}
     const identities = (u.identities || []).map((i) => i.provider).filter((i) => !(i === 'email' && isPlaceholderEmail(u.email)));
     const steamAcc = me && me.steam;
     const hasGoogle = identities.includes('google');
+    const hasGithub = identities.includes('github');
+    const hasTwitch = identities.includes('twitch');
+    const hasSpotify = identities.includes('spotify') || (u.app_metadata || {}).provider === 'spotify' || ((u.app_metadata || {}).providers || []).includes('spotify');
     if (steamAcc || (u.app_metadata || {}).steam_id) identities.push('steam');
     const hasDiscord = identities.includes('discord') || (me && me.discord);
     const plan = (me && me.plan) || 'free';
@@ -543,12 +559,31 @@ ${METHOD_BUTTONS('Registrarse')}
           ${hasDiscord ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-discord>Vincular Discord</button>`}</div>
         <div class="account-item"><span>Google</span><strong>${hasGoogle ? 'Vinculado' : 'No vinculado'}</strong>
           ${hasGoogle ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-google>Vincular Google</button>`}</div>
+        <div class="account-item"><span>GitHub</span><strong>${hasGithub ? 'Vinculado' : 'No vinculado'}</strong>
+          ${hasGithub ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-github>Vincular GitHub</button>`}</div>
+        <div class="account-item"><span>Twitch</span><strong>${hasTwitch ? 'Vinculado' : 'No vinculado'}</strong>
+          ${hasTwitch ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-twitch>Vincular Twitch</button>`}</div>
+        <div class="account-item"><span>Spotify</span><strong>${hasSpotify ? 'Vinculado' : 'No vinculado'}</strong>
+          ${hasSpotify ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-spotify>Vincular Spotify</button>`}</div>
         <div class="account-item account-item-steam"><span>Steam</span>
           ${steamAcc ? `<strong class="steam-acc">${steamAcc.avatar_url ? `<img src="${esc(steamAcc.avatar_url)}" alt="" width="22" height="22">` : ''}${steamAcc.profile_url ? `<a href="${esc(steamAcc.profile_url)}" target="_blank" rel="noopener noreferrer">${esc(steamAcc.display_name || steamAcc.handle)}</a>` : esc(steamAcc.display_name || steamAcc.handle)}</strong>
             ${isPlaceholderEmail(u.email) ? '' : '<button type="button" class="btn btn-secondary btn-sm" data-unlink-steam>Desvincular</button>'}`
           : `<strong>No vinculado</strong><button type="button" class="btn btn-secondary btn-sm" data-link-steam>Vincular Steam</button>`}</div>
         <div class="account-item"><span>Métodos de acceso</span><strong>${[...new Set(identities)].map((i) => PROVIDER_NAME[i] || i).join(' + ') || 'Correo'}</strong></div>
       </div>
+      ${hasSpotify ? `
+      <section class="spotify-player-card" data-spotify-player aria-labelledby="spotify-title">
+        <div class="spotify-player-heading"><div><p class="spotify-kicker">VANTCALL SOUNDTRACK</p><h2 id="spotify-title">Spotify</h2></div><span class="spotify-badge">SPOTIFY</span></div>
+        ${session.provider_token ? `
+        <p class="spotify-description">Conecta tu reproductor y escucha música mientras compites. Se requiere Spotify Premium.</p>
+        <form class="spotify-controls" data-spotify-form>
+          <label for="spotify-uri">Enlace o URI de una canción o playlist</label>
+          <input id="spotify-uri" name="spotify-uri" type="text" placeholder="https://open.spotify.com/track/… o spotify:track:…" autocomplete="off" required>
+          <div class="spotify-actions"><button class="btn btn-primary" type="submit" data-spotify-play disabled>Conectando…</button><button class="btn btn-secondary" type="button" data-spotify-toggle disabled>Pausar / reanudar</button></div>
+        </form>
+        <p class="spotify-status" data-spotify-status role="status" aria-live="polite">Conectando con Spotify…</p>` : `
+        <p class="spotify-description">Spotify está vinculado, pero esta sesión no tiene un token de reproducción. Cierra sesión y vuelve a entrar con Spotify para renovar el acceso.</p>`}
+      </section>` : ''}
       ${plan !== 'free' && me && me.perks && me.perks.length ? `
       <h2 class="account-h2">Tus ventajas ${esc(plan.toUpperCase())}</h2>
       <div class="perk-grid">${me.perks.map((k) => `<div class="perk-card perk-${esc(k.tier)}"><span class="perk-tier">${esc(String(k.tier).toUpperCase())}</span><h3>${esc(k.title)}</h3><p>${esc(k.body || '')}</p>${k.cta_url && k.cta_label ? `<a class="link-inline" href="${esc(k.cta_url)}"${/^https?:/.test(k.cta_url) ? ' target="_blank" rel="noopener noreferrer"' : ''}>${esc(k.cta_label)}</a>` : ''}</div>`).join('')}</div>` : ''}
@@ -633,6 +668,65 @@ ${METHOD_BUTTONS('Registrarse')}
     });
   }
 
+  function bindSpotifyPlayer(root) {
+    if (spotifyPlayer) {
+      spotifyPlayer.disconnect();
+      spotifyPlayer = null;
+    }
+    const form = root && root.querySelector('[data-spotify-form]');
+    if (!form) return;
+    const status = root.querySelector('[data-spotify-status]');
+    const playButton = root.querySelector('[data-spotify-play]');
+    const toggleButton = root.querySelector('[data-spotify-toggle]');
+    spotifyPlayer = new window.VantSpotifyPlayer({
+      accessToken: session.provider_token,
+      onReady() {
+        status.textContent = 'Spotify conectado. Pega el enlace o URI de una canción o playlist.';
+        playButton.disabled = false;
+        playButton.textContent = 'Reproducir';
+        toggleButton.disabled = false;
+      },
+      onState(state) {
+        if (state) status.textContent = state.paused ? 'Reproducción pausada.' : 'Reproduciendo en Spotify.';
+      },
+      onError(error) {
+        status.textContent = error.message;
+        playButton.disabled = true;
+        playButton.textContent = 'No disponible';
+        toggleButton.disabled = true;
+      },
+    });
+    spotifyPlayer.connect().catch((error) => {
+      status.textContent = error.message;
+      playButton.disabled = true;
+      playButton.textContent = 'No disponible';
+    });
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const uri = form.elements['spotify-uri'].value.trim();
+      playButton.disabled = true;
+      status.textContent = 'Iniciando reproducción…';
+      try {
+        await spotifyPlayer.play(uri);
+        status.textContent = 'Solicitud enviada a Spotify.';
+      } catch (error) {
+        status.textContent = error.message;
+      } finally {
+        playButton.disabled = false;
+      }
+    });
+    toggleButton.addEventListener('click', async () => {
+      toggleButton.disabled = true;
+      try {
+        await spotifyPlayer.togglePlayback();
+      } catch (error) {
+        status.textContent = error.message;
+      } finally {
+        toggleButton.disabled = false;
+      }
+    });
+  }
+
   function afterRender(pageId) {
     const main = document.getElementById('main');
     if (!main) return;
@@ -658,17 +752,25 @@ ${METHOD_BUTTONS('Registrarse')}
         if (ld) ld.addEventListener('click', () => linkProvider('discord', m));
         const lg = root.querySelector('[data-link-google]');
         if (lg) lg.addEventListener('click', () => linkProvider('google', m));
+        const lgh = root.querySelector('[data-link-github]');
+        if (lgh) lgh.addEventListener('click', () => linkProvider('github', m));
+        const lt = root.querySelector('[data-link-twitch]');
+        if (lt) lt.addEventListener('click', () => linkProvider('twitch', m));
+        const lsp = root.querySelector('[data-link-spotify]');
+        if (lsp) lsp.addEventListener('click', () => linkProvider('spotify', m));
         const ls = root.querySelector('[data-link-steam]');
         if (ls) ls.addEventListener('click', () => linkSteam(m, ls));
         const us = root.querySelector('[data-unlink-steam]');
         if (us) us.addEventListener('click', () => unlinkSteam(m, us));
         const pf = root.querySelector('form[data-form="perfil"]'); if (pf) bindForm(pf, m);
         const st = root.querySelector('form[data-form="soporte"]'); if (st) bindForm(st, root.querySelector('[data-support-msg]'));
+        bindSpotifyPlayer(root);
         const fl = flags.get('vant_flash'); if (fl && m) { const f = JSON.parse(fl); flags.del('vant_flash'); showMsg(m, f.text, f.kind); }
       };
       if (session && !me) loadMe().then(draw); else draw();
       if (session && me && !me.player) setTimeout(() => loadMe().then(() => { if (window.location.hash === '#/cuenta') draw(); }), 2500);
     }
+
     if (pageId === 'precios' && session && !flags.get('vant_vp')) { flags.set('vant_vp', '1'); logEvent('visita_precios', {}); }
     if (pageId === 'checkout/exito') {
       if (session) pollPlan(msg); else showMsg(msg, 'Stripe ha recibido tu pago. Inicia sesión para ver tu plan activo.', 'info');
@@ -680,6 +782,10 @@ ${METHOD_BUTTONS('Registrarse')}
   async function logout() {
     await logEvent('cierre_sesion', {});
     try { await sb.auth.signOut({ scope: 'local' }); } catch (_) { /* se limpia igualmente */ }
+    if (spotifyPlayer) {
+      spotifyPlayer.disconnect();
+      spotifyPlayer = null;
+    }
     session = null; me = null; providers = null;
     if (window.VantDB && window.VantDB.invalidate) window.VantDB.invalidate();
     updateHeader();
