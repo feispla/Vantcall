@@ -6,8 +6,8 @@
 (function () {
   'use strict';
 
-  const SUPABASE_URL = 'https://qtetsgwwsvqzquxssudj.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_Wd5NBpT9pqEJV4Gw4jJB7w_hFXYvYtm';
+  const SUPABASE_URL = 'https://sodjrbhytjfnixxmwksj.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_qB0pL4Yu3aTX7uWCytBj-g_LeaVYzpp';
 
   const lib = window.supabase;
   // Algunos contextos (iframes de vista previa) bloquean la Locks API: usamos un cerrojo en memoria.
