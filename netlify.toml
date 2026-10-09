@@ -1,0 +1,12 @@
+# Static site served from the repository root (no build step).
+# `base` is set explicitly so the build doesn't depend on the
+# Base directory configured in the Netlify UI.
+# `command` is a no-op so framework detection doesn't mistake the
+# Supabase `config.toml` for a Hugo/Zola project.
+[build]
+  base = "."
+  publish = "."
+  command = "echo 'Static site, no build step'"
+
+[dev]
+  framework = "#static"
