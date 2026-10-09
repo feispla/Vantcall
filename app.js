@@ -1,5 +1,5 @@
 // ============================================
-// VANTCALL Esports — App & Router (datos reales de Supabase)
+// VANTCALL Esports — App & Router (datos reales de Neon Data API)
 // ============================================
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -53,13 +53,13 @@ function emptyState(title, text, cta) {
 }
 function errorState(err) {
   console.error(err);
-  return `<div class="auth-msg auth-msg-error" role="alert">No se pudieron cargar los datos de Supabase. ${esc(err && err.message ? err.message : '')} <button type="button" class="link-btn" onclick="router()">Reintentar</button></div>`;
+  return `<div class="auth-msg auth-msg-error" role="alert">No se pudieron cargar los datos. ${esc(err && err.message ? err.message : '')} <button type="button" class="link-btn" onclick="router()">Reintentar</button></div>`;
 }
 function skeleton(rows = 3) {
   return `<div class="skeleton-list">${'<div class="skeleton-row"></div>'.repeat(rows)}</div>`;
 }
 function liveTag() {
-  return `<span class="live-data-tag" title="Datos en tiempo real desde Supabase"><span class="dot"></span>Datos en vivo</span>`;
+  return `<span class="live-data-tag" title="Datos en tiempo real"><span class="dot"></span>Datos en vivo</span>`;
 }
 
 // ============================================
@@ -143,6 +143,7 @@ const RANKS_STRIP = `<div class="ranks-strip">${VANTS_RANKS.map((r, i) => `
 
 const DISCORD_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>';
 
+const KICK_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
 
 // ============================================
 // PLANES (bloque compartido Inicio + Precios)
@@ -199,7 +200,7 @@ const DOC_CONTENT = {
         <div class="hero-grid" aria-hidden="true"></div>
         <div class="hero-badge"><span class="live-dot"></span> BETA ABIERTA · VALORANT · CS2 · LOL</div>
         <h1>VANT<span class="hero-accent">CALL</span></h1>
-        <p class="hero-tagline">La liga competitiva de la comunidad: ranked con MMR real, torneos con premios y un bot de Discord conectado a tu perfil. Entra con Google, Discord, Steam o correo.</p>
+        <p class="hero-tagline">La liga competitiva de la comunidad: ranked con MMR real, torneos con premios y un bot de Discord conectado a tu perfil. Entra con Google, Discord, Steam, Kick o correo.</p>
         <div class="hero-cta">
           <a href="#/login" class="btn btn-primary btn-lg" data-auth-cta>JUGAR GRATIS</a>
           <a href="#/torneos" class="btn btn-secondary btn-lg">VER TORNEOS</a>
@@ -256,10 +257,11 @@ const DOC_CONTENT = {
       <!-- Login Methods -->
       <section class="valorant-section">
         <div class="section-header"><h2>ENTRA COMO QUIERAS</h2></div>
-        <div class="login-methods-home login-methods-4">
+        <div class="login-methods-home login-methods-5">
           <a href="#/login" class="login-method-card"><div class="login-method-icon google-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.29 14.29A7.2 7.2 0 0 1 4.91 12c0-.8.14-1.57.38-2.29v-3.1H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.1z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.61l4.01 3.1C6.23 6.88 8.88 4.77 12 4.77z"/></svg></div><h3>Google</h3><p>Un clic con tu cuenta de Google</p></a>
           <a href="#/login" class="login-method-card"><div class="login-method-icon discord-icon">${DISCORD_SVG}</div><h3>Discord</h3><p>Tu perfil queda conectado al bot VANTS</p></a>
           <a href="#/login" class="login-method-card"><div class="login-method-icon steam-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.98 0C5.67 0 .5 4.86.02 11.04l6.43 2.66a3.38 3.38 0 0 1 1.92-.6l.19.01 2.86-4.15v-.06a4.52 4.52 0 1 1 4.52 4.52h-.1l-4.08 2.91v.16a3.39 3.39 0 0 1-6.72.63L.4 15.5A12 12 0 1 0 11.98 0z"/></svg></div><h3>Steam</h3><p>Ideal para CS2: cuenta verificada por Valve</p></a>
+          <a href="#/login" class="login-method-card"><div class="login-method-icon kick-icon">${KICK_SVG}</div><h3>Kick</h3><p>Para streamers: tu canal conectado</p></a>
           <a href="#/registro" class="login-method-card"><div class="login-method-icon mail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div><h3>Correo</h3><p>Registro clásico con verificación por email</p></a>
         </div>
       </section>
@@ -339,7 +341,7 @@ const DOC_CONTENT = {
       <div class="bot-panel">
         <h3>Comandos del bot VANTS en Discord</h3>
         <div class="bot-commands" data-async="bot-commands">${skeleton(2)}</div>
-        <p class="login-note">Los comandos se gestionan desde Supabase y responden con tus datos reales de la web. Entra con Discord o vincúlalo en Mi cuenta para usarlos.</p>
+        <p class="login-note">Los comandos se gestionan desde la base de datos y responden con tus datos reales de la web. Entra con Discord o vincúlalo en Mi cuenta para usarlos.</p>
       </div>`,
     async load(main) {
       const DB = window.VantDB;
@@ -653,7 +655,7 @@ function renderPage(pageId) {
   window.scrollTo(0, 0);
   if (typeof page.load === 'function') {
     if (!window.VantDB || !window.VantDB.client) {
-      main.querySelectorAll('[data-async]').forEach((el) => { el.innerHTML = errorState(new Error('No se pudo cargar el cliente de Supabase.')); });
+      main.querySelectorAll('[data-async]').forEach((el) => { el.innerHTML = errorState(new Error('No se pudo cargar el cliente.')); });
     } else {
       page.load(main);
     }
@@ -664,14 +666,12 @@ function renderPage(pageId) {
 const BASE = location.pathname.startsWith('/Vantcall') ? '/Vantcall' : '';
 
 function currentRoute() {
-  // Prioridad: hash (#/ruta), luego path real (/Vantcall/ruta)
   if (location.hash.startsWith('#/')) return location.hash.replace('#/', '').split('?')[0];
   const p = location.pathname.replace(new RegExp('^' + BASE + '/?'), '').replace(/\/$/, '');
   return p || 'inicio';
 }
 
 function navigateTo(route) {
-  // URLs limpias: history API; mantiene sincronizado el hash por compatibilidad
   if (location.pathname !== BASE + '/' + route) {
     history.pushState(null, '', BASE + '/' + route);
   }

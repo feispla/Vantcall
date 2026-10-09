@@ -1,12 +1,13 @@
 // ============================================
 // VANTCALL — Configuración Auth0 + Neon Data API
 // Reemplaza al antiguo db.js (Supabase).
+// Incluye compatibilidad con window.VantDB.client para app.js
 // ============================================
 
 // --- Auth0 ---
 const AUTH0_DOMAIN = 'vants.eu.auth0.com';
-const AUTH0_CLIENT_ID = 'oaOmNizh7HrASWfmfM29bN284IMJvqPG'; // VANTS (Native)
-const AUTH0_AUDIENCE = 'https://api.vants.app'; // API identifier en Auth0
+const AUTH0_CLIENT_ID = 'oaOmNizh7HrASWfmfM29bN284IMJvqPG'; // VANTS movil
+const AUTH0_AUDIENCE = 'https://api.vants.app';
 
 // --- Neon Data API ---
 const NEON_DATA_API = 'https://ep-autumn-scene-b4opu2ip.apirest.c-6.us-east-2.aws.neon.tech/neondb/rest/v1';
@@ -178,6 +179,8 @@ const DB = {
   rpc,
   invalidate,
   getToken,
+  // Compatibilidad con app.js que usa window.VantDB.client
+  client: { from, rpc },
 
   stats: () => cached('stats', async () => {
     const count = async (t, f) => {
