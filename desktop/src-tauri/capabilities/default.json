@@ -1,0 +1,6 @@
+{
+  "permissions": [
+    "core:default",
+    "opener:default"
+  ]
+}
