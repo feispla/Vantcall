@@ -2,7 +2,6 @@
 <html lang="es" data-theme="dark">
 <head>
     <!-- Google Tag Manager -->
-      
       <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MZPW89N2');</script>
         <!-- End Google Tag Manager -->
   <meta charset="UTF-8">
@@ -197,11 +196,16 @@
     </footer>
   </div>
 
-  <script src="./vendor/supabase-2.57.4.min.js?v=8" defer></script>
-  <script src="./db.js?v=8" defer></script>
+  <!-- Auth0 SPA SDK (reemplaza a Supabase JS) -->
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+  <!-- Configuración Auth0 + Neon Data API (reemplaza a db.js) -->
+  <script src="./auth0-config.js?v=9" defer></script>
   <script src="./app.js?v=8" defer></script>
   <script src="./spotify-player.js?v=8" defer></script>
-  <script src="./auth.js?v=8" defer></script>
+  <!-- Auth con Auth0 (reemplaza al antiguo auth.js de Supabase) -->
+  <script src="./auth.js?v=9" defer></script>
+  <!-- Módulo Streamer (perfil, avatar, amigos) -->
+  <script src="./streamer.js?v=1" defer></script>
   <script src="./zona.js?v=8" defer></script>
   <script src="./premium.js?v=8" defer></script>
   <script>

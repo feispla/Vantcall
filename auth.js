@@ -1,6 +1,6 @@
 // ============================================
-// VANTCALL Esports — Auth (Supabase: correo, Discord, Google, Steam y Spotify) + cuenta + zona de plan + Stripe
-// Usa el cliente compartido de db.js (proyecto qtetsgwwsvqzquxssudj)
+// VANTCALL Esports — Auth (Auth0: correo, Google, Discord, GitHub, Kick) + cuenta + zona + Stripe
+// Usa Auth0 SPA SDK + Neon Data API (window.VantDB de auth0-config.js)
 // ============================================
 (function () {
   'use strict';
@@ -14,14 +14,10 @@
   const PLAYER_COLS = 'id, username, display_name, avatar_url, region, summoner_name, verified, created_at, main_game, country';
   const USERNAME_RE = /^[A-Za-z0-9_.\-]{3,16}$/;
 
-  const sb = window.VantDB && window.VantDB.client;
-  const SUPABASE_URL = window.VantDB && window.VantDB.url;
-  const SUPABASE_KEY = window.VantDB && window.VantDB.key;
-
+  const DB = window.VantDB;
+  const A0 = window.VantAuth0;
   let session = null;
-  let me = null; // { player, discord, plan, profile, steam, perks }
-  let providers = null;
-  let spotifyPlayer = null;
+  let me = null;
 
   const mem = new Map();
   const flags = { get: (k) => (mem.has(k) ? mem.get(k) : null), set: (k, v) => mem.set(k, String(v)), del: (k) => mem.delete(k) };
@@ -31,26 +27,22 @@
   const go = (route) => { if (window.location.hash !== '#/' + route) window.location.hash = '#/' + route; else if (typeof router === 'function') router(); };
 
   const ERRORS = [
-    [/invalid login credentials/i, 'Correo o contraseña incorrectos.'],
-    [/email not confirmed/i, 'Tu correo aún no está confirmado. Revisa tu bandeja de entrada (y spam).'],
-    [/user already registered|already been registered/i, 'Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.'],
-    [/password should be|weak password|password is too weak/i, 'La contraseña es demasiado débil.'],
+    [/invalid login credentials|wrong email or password|invalid_grant/i, 'Correo o contraseña incorrectos.'],
+    [/email not confirmed|verify your email|email_verified/i, 'Tu correo aún no está confirmado. Revisa tu bandeja de entrada (y spam).'],
+    [/user already registered|already been registered|user already exists/i, 'Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.'],
+    [/password should be|weak password|password is too weak|password strength|PasswordStrengthError/i, 'La contraseña es demasiado débil.'],
     [/rate limit|too many|security purposes/i, 'Demasiados intentos. Espera un minuto y vuelve a probar.'],
-    [/provider is not enabled|unsupported provider/i, 'Este método de inicio de sesión no está activado en este momento.'],
-    [/flow state|code verifier|both auth code and code verifier/i, 'El inicio de sesión anterior quedó a medias. Pulsa de nuevo el botón para empezar uno nuevo.'],
-    [/manual linking is disabled/i, 'La vinculación manual de cuentas está desactivada en Supabase (Authentication → Sign In / Providers → Allow manual linking).'],
-    [/identity is already linked|already linked to another user/i, 'Esa cuenta ya está vinculada a otro usuario de VANTS.'],
-    [/same.*password|different from the old/i, 'La nueva contraseña debe ser distinta a la anterior.'],
-    [/invalid email|unable to validate email/i, 'El correo no es válido.'],
+    [/provider is not enabled|unsupported provider|connection/i, 'Este método de inicio de sesión no está activado en este momento.'],
     [/duplicate key|unique/i, 'Ya existe un registro igual.'],
-    [/row-level security|permission denied/i, 'No tienes permiso para esta acción. Inicia sesión de nuevo.'],
-    [/failed to fetch|network/i, 'Sin conexión con el servidor. Revisa tu conexión e inténtalo de nuevo.'],
-    [/unable to exchange external code|invalid_client/i, 'El proveedor rechazó el inicio de sesión (configuración OAuth). Prueba con otro método mientras el equipo lo revisa.'],
-    [/flow state|flow_state|code verifier|both auth code and code verifier/i, 'La sesión de inicio caducó. Pulsa de nuevo el botón para entrar.'],
-    [/state parameter missing|bad_oauth_state/i, 'El inicio de sesión se interrumpió. Vuelve a intentarlo desde este navegador.'],
+    [/row-level security|permission denied|insufficient/i, 'No tienes permiso para esta acción. Inicia sesión de nuevo.'],
+    [/failed to fetch|network|timeout/i, 'Sin conexión con el servidor. Revisa tu conexión e inténtalo de nuevo.'],
+    [/access_denied|consent_required/i, 'Cancelaste el inicio de sesión.'],
+    [/invalid_token|expired|token.*expired/i, 'Tu sesión ha caducado. Inicia sesión de nuevo.'],
+    [/login_required/i, 'Necesitas iniciar sesión.'],
+    [/interaction_required/i, 'Se requiere tu autorización. Inténtalo de nuevo.'],
   ];
   const humanError = (e) => {
-    const msg = (e && (e.message || e.error_description || e.msg)) || String(e);
+    const msg = (e && (e.message || e.error_description || e.error || e.msg)) || String(e);
     for (const [re, txt] of ERRORS) if (re.test(msg)) return txt;
     return 'No se pudo completar la operación: ' + msg;
   };
@@ -75,22 +67,36 @@
     return '';
   }
 
-  async function logEvent(type, data) {
-    if (!sb || !session) return;
-    try { await sb.rpc('log_web_event', { event_type: type, data: data || {} }); } catch (_) { /* no bloquear la UI */ }
+  // ---------- sesión ----------
+  async function loadSession() {
+    if (!A0.client) return null;
+    try {
+      const isAuth = await A0.client.isAuthenticated();
+      if (!isAuth) { session = null; return null; }
+      const user = await A0.client.getUser();
+      const token = await A0.getToken();
+      session = { user, token, userId: user ? user.sub : null };
+      return session;
+    } catch {
+      session = null;
+      return null;
+    }
   }
 
   async function loadMe() {
-    if (!sb || !session) { me = null; return null; }
-    const { data: pid } = await sb.rpc('current_player_id');
-    const { data: player } = pid ? await sb.from('players').select(PLAYER_COLS).eq('id', pid).maybeSingle() : { data: null };
-    if (!player) { me = { player: null, discord: null, plan: 'free', profile: null, steam: null, perks: [], adminRole: null }; return me; }
+    if (!session) { me = null; return null; }
+    const { data: pid } = await DB.rpc('current_player_id');
+    const { data: player } = pid ? await DB.from('players').select(PLAYER_COLS).eq('id', pid).maybeSingle() : { data: null };
+    if (!player) {
+      me = { player: null, discord: null, plan: 'free', profile: null, steam: null, perks: [], adminRole: null };
+      return me;
+    }
     const [disc, prof, ent, steam, perks] = await Promise.all([
-      sb.from('player_discord_accounts').select('discord_id, discord_username, avatar_url').eq('player_id', player.id).maybeSingle(),
-      sb.from('profiles').select('bio, visibility').eq('player_id', player.id).maybeSingle(),
-      sb.from('entitlements').select('tier, is_active, expires_at').eq('player_id', player.id).eq('is_active', true),
-      sb.from('user_game_accounts').select('handle, display_name, avatar_url, profile_url, verified').eq('user_id', session.user.id).eq('game', 'steam').maybeSingle(),
-      sb.from('plan_content').select('tier, kind, title, body, cta_label, cta_url, sort_order').eq('published', true).order('tier').order('sort_order'),
+      DB.from('player_discord_accounts').select('discord_id, discord_username, avatar_url').eq('player_id', player.id).maybeSingle(),
+      DB.from('profiles').select('bio, visibility').eq('player_id', player.id).maybeSingle(),
+      DB.from('entitlements').select('tier, is_active, expires_at').eq('player_id', player.id).eq('is_active', true),
+      DB.from('user_game_accounts').select('handle, display_name, avatar_url, profile_url, verified').eq('user_id', session.userId).eq('game', 'steam').maybeSingle(),
+      DB.from('plan_content').select('tier, kind, title, body, cta_label, cta_url, sort_order').eq('published', true).order('tier').order('sort_order'),
     ]);
     let plan = 'free';
     for (const e of ent.data || []) {
@@ -98,26 +104,17 @@
       if (PLAN_RANK[t] > PLAN_RANK[plan] && (!e.expires_at || new Date(e.expires_at) > new Date())) plan = t;
     }
     let adminRole = null;
-    try { const r = await sb.rpc('web_admin_role'); adminRole = r.data || null; } catch (_) { adminRole = null; }
-    // El dueño y los admins ven siempre la zona completa (ELITE), entren con el método que entren
+    try { const r = await DB.rpc('web_admin_role'); adminRole = r.data || null; } catch (_) { adminRole = null; }
     if (adminRole === 'owner' || adminRole === 'admin') plan = 'elite';
     me = { player, discord: disc.data || null, profile: prof.data || null, plan, steam: (steam && steam.data) || null, perks: (perks && perks.data) || [], adminRole };
     return me;
   }
 
-  async function loadProviders() {
-    if (providers) return providers;
-    try {
-      const r = await fetch(SUPABASE_URL + '/auth/v1/settings', { headers: { apikey: SUPABASE_KEY } });
-      providers = (await r.json()).external || {};
-    } catch (_) { providers = {}; }
-    return providers;
-  }
-
   function displayName() {
-    if (!session) return '';
-    const u = session.user;
-    return (me && me.player && (me.player.display_name || me.player.username)) || (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || (u.email || '').split('@')[0];
+    if (!session || !session.user) return '';
+    return (me && me.player && (me.player.display_name || me.player.username))
+      || (session.user.name || session.user.nickname)
+      || (session.user.email || '').split('@')[0];
   }
 
   function updateHeader() {
@@ -143,247 +140,95 @@
     });
   }
 
-  const ICON_DISCORD = typeof DISCORD_SVG === 'string' ? DISCORD_SVG : '';
-  const ICON_GOOGLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.29 14.29A7.2 7.2 0 0 1 4.91 12c0-.8.14-1.57.38-2.29v-3.1H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.1z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.61l4.01 3.1C6.23 6.88 8.88 4.77 12 4.77z"/></svg>';
-  const ICON_STEAM = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.98 0C5.67 0 .5 4.86.02 11.04l6.43 2.66a3.38 3.38 0 0 1 1.92-.6l.19.01 2.86-4.15v-.06a4.52 4.52 0 1 1 4.52 4.52h-.1l-4.08 2.91v.16a3.39 3.39 0 0 1-6.72.63L.4 15.5A12 12 0 1 0 11.98 0zM7.54 18.21l-1.47-.61a2.54 2.54 0 1 0 1.39-3.46l1.52.63a1.87 1.87 0 1 1-1.44 3.44zm11.42-9.3a3.02 3.02 0 1 0-6.03 0 3.02 3.02 0 0 0 6.03 0zm-5.27 0a2.26 2.26 0 1 1 4.53 0 2.26 2.26 0 0 1-4.53 0z"/></svg>';
-  const ICON_SPOTIFY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0a12 12 0 1 0 0 24 12 12 0 0 0 0-24Zm5.5 17.3a.75.75 0 0 1-1.03.25c-2.82-1.72-6.38-2.1-10.56-1.15a.75.75 0 1 1-.33-1.46c4.58-1.04 8.52-.59 11.67 1.33.35.21.46.67.25 1.03Zm1.47-3.27a.94.94 0 0 1-1.29.31c-3.23-1.99-8.15-2.57-11.97-1.41a.94.94 0 1 1-.55-1.8c4.36-1.32 9.78-.68 13.5 1.61.44.27.58.85.31 1.29Zm.13-3.4C15.23 8.3 8.82 8.1 5.1 9.23a1.13 1.13 0 0 1-.66-2.16c4.27-1.3 11.37-1.05 15.86 1.62a1.13 1.13 0 1 1-1.2 1.94Z"/></svg>';
-  const ICON_GITHUB = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.76-.24.76-.54v-2.1c-3.1.67-3.76-1.32-3.76-1.32-.5-1.28-1.23-1.62-1.23-1.62-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 .1.76 2.62 3.85 1.87.1-.72.4-1.22.7-1.5-2.48-.28-5.09-1.25-5.09-5.54 0-1.22.44-2.22 1.15-3-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.08 1.15a10.7 10.7 0 0 1 5.6 0c2.14-1.45 3.07-1.15 3.07-1.15.61 1.54.23 2.68.12 2.96.72.78 1.14 1.78 1.14 3.01 0 4.3-2.62 5.25-5.11 5.53.4.35.75 1.03.75 2.08v3.12c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg>';
-  const ICON_TWITCH = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 2 2 6v14h5v3h3l3-3h4l5-5V2H4Zm16 12-3 3h-5l-3 3v-3H5V4h15v10ZM11 7h2v6h-2V7Zm5 0h2v6h-2V7Z"/></svg>';
-  const METHOD_BUTTONS = (verb) => `
-        <div class="login-methods">
-          <button type="button" class="login-btn login-btn-google" data-oauth="google">${ICON_GOOGLE} ${verb} con Google</button>
-          <button type="button" class="login-btn login-btn-discord" data-oauth="discord">${ICON_DISCORD} ${verb} con Discord</button>
-          <button type="button" class="login-btn login-btn-steam" data-oauth="steam">${ICON_STEAM} ${verb} con Steam</button>
-          <button type="button" class="login-btn login-btn-github" data-oauth="github">${ICON_GITHUB} ${verb} con GitHub</button>
-          <button type="button" class="login-btn login-btn-twitch" data-oauth="twitch">${ICON_TWITCH} ${verb} con Twitch</button>
-          <button type="button" class="login-btn login-btn-spotify" data-oauth="spotify">${ICON_SPOTIFY} ${verb} con Spotify</button>
-        </div>`;
-  const PROVIDER_NAME = { email: 'Correo', discord: 'Discord', google: 'Google', steam: 'Steam', github: 'GitHub', twitch: 'Twitch', spotify: 'Spotify' };
-  const STEAM_ERRORS = {
-    cancelled: 'Cancelaste el inicio con Steam.',
-    verification_failed: 'Steam no pudo verificar tu identidad. Inténtalo de nuevo.',
-    already_linked: 'Esa cuenta de Steam ya está vinculada a otro usuario VANTS.',
-    link_failed: 'No se pudo vincular Steam. Inténtalo de nuevo en unos minutos.',
-    account_create_failed: 'No se pudo crear tu cuenta con Steam. Inténtalo de nuevo.',
-    login_failed: 'No se pudo iniciar sesión con Steam. Inténtalo de nuevo.',
-    start_failed: 'No se pudo iniciar la conexión con Steam.',
+  // ---------- OAuth (Auth0 connections) ----------
+  const PROVIDER_CONNECTION = {
+    google: 'google-oauth2',
+    discord: 'discord',
+    github: 'github',
+    twitch: 'twitch',
+    spotify: 'spotify',
+    kick: 'kick', // Custom Social Connection
   };
-  const isPlaceholderEmail = (e) => /\.invalid$/i.test(e || '');
-
-  // ---------- páginas de auth ----------
-  const PAGES = {
-    'login': {
-      title: 'Iniciar sesión — VANTCALL Esports',
-      content: `
-      <div class="login-page">
-        <h1>Iniciar sesión</h1>
-        <p class="login-sub">Accede con Google, Discord, Steam, GitHub, Twitch, Spotify o tu correo</p>
-        <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
-${METHOD_BUTTONS('Continuar')}
-        <div class="login-divider"><span>o con correo</span></div>
-        <form class="login-form" data-form="login" novalidate>
-          <div class="login-form-group">
-            <label class="login-form-label" for="li-email">Correo electrónico</label>
-            <input id="li-email" name="email" type="email" class="login-form-input" placeholder="tu@correo.com" autocomplete="email" required>
-          </div>
-          <div class="login-form-group">
-            <label class="login-form-label" for="li-pass">Contraseña</label>
-            <input id="li-pass" name="password" type="password" class="login-form-input" placeholder="••••••••••••" autocomplete="current-password" required>
-          </div>
-          <div class="login-form-actions"><span></span><a href="#/recuperar">¿Olvidaste tu contraseña?</a></div>
-          <button type="submit" class="btn btn-primary login-submit">Iniciar sesión</button>
-        </form>
-        <p class="login-note">VANTS nunca te pedirá tu contraseña de Google, Discord, Steam o Spotify: el acceso ocurre en su propia web y tu sesión la gestiona Supabase Auth.</p>
-        <p class="login-switch">¿No tienes cuenta? <a href="#/registro">Regístrate gratis</a></p>
-      </div>`,
-    },
-
-    'registro': {
-      title: 'Registro — VANTCALL Esports',
-      content: `
-      <div class="login-page">
-        <h1>Crear cuenta</h1>
-        <p class="login-sub">Tu identidad de competidor para VALORANT, CS2 y LoL</p>
-        <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
-${METHOD_BUTTONS('Registrarse')}
-        <div class="login-divider"><span>o con correo</span></div>
-        <form class="login-form" data-form="registro" novalidate>
-          <div class="login-form-group">
-            <label class="login-form-label" for="rg-user">Nickname</label>
-            <input id="rg-user" name="username" type="text" class="login-form-input" placeholder="3-16 caracteres, sin espacios" minlength="3" maxlength="16" autocomplete="nickname" required>
-          </div>
-          <div class="login-form-group">
-            <label class="login-form-label" for="rg-email">Correo electrónico</label>
-            <input id="rg-email" name="email" type="email" class="login-form-input" placeholder="tu@correo.com" autocomplete="email" required>
-          </div>
-          <div class="login-form-group">
-            <label class="login-form-label" for="rg-pass">Contraseña</label>
-            <input id="rg-pass" name="password" type="password" class="login-form-input" placeholder="Mínimo 12, con mayúscula, minúscula y número" minlength="12" autocomplete="new-password" required>
-          </div>
-          <div class="login-form-group">
-            <label class="login-form-label" for="rg-pass2">Confirmar contraseña</label>
-            <input id="rg-pass2" name="password2" type="password" class="login-form-input" autocomplete="new-password" required>
-          </div>
-          <label class="check-row"><input type="checkbox" name="age" required> Tengo 16 años o más y acepto los términos y el código de conducta.</label>
-          <button type="submit" class="btn btn-primary login-submit">Crear cuenta</button>
-        </form>
-        <p class="login-note">Recibirás un correo de verificación (válido 24 h). Debes confirmarlo antes de inscribirte en torneos.</p>
-        <p class="login-switch">¿Ya tienes cuenta? <a href="#/login">Inicia sesión</a></p>
-      </div>`,
-    },
-
-    'recuperar': {
-      title: 'Recuperar contraseña — VANTCALL Esports',
-      content: `
-      <div class="login-page">
-        <h1>Recuperar contraseña</h1>
-        <p class="login-sub">Te enviaremos un enlace de un solo uso</p>
-        <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
-        <form class="login-form" data-form="recuperar" novalidate>
-          <div class="login-form-group">
-            <label class="login-form-label" for="rc-email">Correo electrónico</label>
-            <input id="rc-email" name="email" type="email" class="login-form-input" placeholder="tu@correo.com" autocomplete="email" required>
-          </div>
-          <button type="submit" class="btn btn-primary login-submit">Enviar enlace</button>
-        </form>
-        <p class="login-note">Abre el enlace en este mismo navegador. ¿Perdiste acceso al correo? Escribe a feispla@hotmail.com.</p>
-        <p class="login-switch"><a href="#/login">Volver a iniciar sesión</a></p>
-      </div>`,
-    },
-
-    'nueva-contrasena': {
-      title: 'Nueva contraseña — VANTCALL Esports',
-      content: `
-      <div class="login-page">
-        <h1>Nueva contraseña</h1>
-        <p class="login-sub">Mínimo 12 caracteres, con mayúscula, minúscula y número</p>
-        <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
-        <form class="login-form" data-form="nueva-contrasena" novalidate>
-          <div class="login-form-group">
-            <label class="login-form-label" for="nc-pass">Nueva contraseña</label>
-            <input id="nc-pass" name="password" type="password" class="login-form-input" minlength="12" autocomplete="new-password" required>
-          </div>
-          <div class="login-form-group">
-            <label class="login-form-label" for="nc-pass2">Repite la contraseña</label>
-            <input id="nc-pass2" name="password2" type="password" class="login-form-input" minlength="12" autocomplete="new-password" required>
-          </div>
-          <button type="submit" class="btn btn-primary login-submit">Guardar contraseña</button>
-        </form>
-      </div>`,
-    },
-
-    'cuenta': {
-      title: 'Mi cuenta — VANTCALL Esports',
-      content: `<div class="account-page" data-account><div class="skeleton-list"><div class="skeleton-row"></div><div class="skeleton-row"></div></div></div>`,
-    },
-
-    'checkout/exito': {
-      title: 'Pago recibido — VANTCALL Esports',
-      content: `
-      <div class="login-page">
-        <h1>Pago recibido</h1>
-        <p class="login-sub">Gracias por apoyar VANTCALL.</p>
-        <div class="auth-msg auth-msg-info" data-auth-msg role="status" aria-live="polite">Confirmando el pago con Stripe…</div>
-        <p class="login-switch"><a href="#/cuenta" class="btn btn-primary">Ver mi cuenta</a></p>
-      </div>`,
-    },
-  };
-
-  function checkoutPage(key) {
-    const p = PLANS[key];
-    return {
-      title: 'Checkout — ' + p.name,
-      content: `
-      <h1>Checkout — ${p.name}</h1>
-      <p class="breadcrumb"><a href="#/precios">Precios</a> <span>/</span> Checkout</p>
-      <div class="checkout-box">
-        <div class="checkout-summary">
-          <h3>Resumen del pedido</h3>
-          <div class="checkout-line"><span>${p.name} — Pago único</span><span>€${p.price.toFixed(2)}</span></div>
-          <div class="checkout-line"><span>IVA</span><span>Incluido</span></div>
-          <div class="checkout-line checkout-total"><span>Total</span><span>€${p.price.toFixed(2)}</span></div>
-        </div>
-        <div class="checkout-actions">
-          <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
-          <p>Serás redirigido a la pasarela segura de Stripe. El plan se activa en tu cuenta cuando Stripe confirma el pago.</p>
-          <button type="button" class="btn btn-primary checkout-pay-btn" data-checkout="${key}">Pagar con Stripe</button>
-          <a href="#/precios" class="btn btn-secondary">Volver</a>
-        </div>
-      </div>`,
-    };
-  }
-  Object.keys(PLANS).forEach((k) => { PAGES['checkout/' + k] = checkoutPage(k); });
-  if (typeof DOC_CONTENT === 'object') Object.assign(DOC_CONTENT, PAGES);
-
-  // ---------- acciones ----------
-  const OAUTH_OPTS = {
-    discord: { scopes: 'identify email', queryParams: { prompt: 'consent' } },
-    google: { queryParams: { prompt: 'select_account' } },
-    github: { scopes: 'read:user user:email' },
-    twitch: { scopes: 'user:read:email' },
-    spotify: { scopes: 'user-read-email user-read-private streaming user-modify-playback-state user-read-playback-state user-read-currently-playing' },
-  };
-  const topGo = (url) => { try { window.top.location.href = url; } catch (_) { window.location.href = url; } };
 
   async function oauth(provider, msgEl) {
-    if (!sb) return showMsg(msgEl, 'No se pudo cargar el sistema de inicio de sesión. Recarga la página.', 'error');
-    if (provider === 'steam') return steamLogin(msgEl);
-    const prov = await loadProviders();
-    // Si quedó una sesión rota de un intento anterior, se limpia antes de volver a entrar
-    if (!session) { try { await sb.auth.signOut({ scope: 'local' }); } catch (_) { /* sin sesión */ } }
-    if (!prov[provider]) return showMsg(msgEl, 'El inicio con ' + PROVIDER_NAME[provider] + ' no está activo. Usa otro método mientras tanto.', 'warning');
-    const { data, error } = await sb.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: baseUrl() + '?next=cuenta', skipBrowserRedirect: true, ...(OAUTH_OPTS[provider] || {}) },
-    });
-    if (error) return showMsg(msgEl, humanError(error), 'error');
-    if (data && data.url) topGo(data.url);
-  }
-
-  function steamLogin(msgEl) {
-    showMsg(msgEl, 'Conectando con Steam…', 'info');
-    topGo(SUPABASE_URL + '/functions/v1/steam-login?redirect_to=' + encodeURIComponent(baseUrl()));
-  }
-
-  async function linkProvider(provider, msgEl) {
-    const { data, error } = await sb.auth.linkIdentity({ provider, options: { redirectTo: baseUrl() + '?next=cuenta', skipBrowserRedirect: true, ...(OAUTH_OPTS[provider] || {}) } });
-    if (error) return showMsg(msgEl, humanError(error), 'error');
-    if (data && data.url) topGo(data.url);
-  }
-
-  async function linkSteam(msgEl, btn) {
-    if (!session) return;
-    btn && (btn.disabled = true);
+    if (!A0.client) return showMsg(msgEl, 'No se pudo cargar el sistema de inicio de sesión. Recarga la página.', 'error');
+    const connection = PROVIDER_CONNECTION[provider];
+    if (!connection) return showMsg(msgEl, 'Proveedor no soportado.', 'error');
     try {
-      const r = await fetch(SUPABASE_URL + '/functions/v1/steam-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + session.access_token },
-        body: JSON.stringify({ redirect_to: baseUrl() }),
+      await A0.client.loginWithRedirect({
+        authorizationParams: {
+          connection,
+          redirect_uri: baseUrl(),
+          audience: 'https://api.vants.app',
+        },
       });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j.login_url) throw new Error(j.error === 'redirect_not_allowed' ? 'Esta dirección web aún no está autorizada para Steam.' : 'No se pudo iniciar la vinculación con Steam.');
-      topGo(j.login_url);
-    } catch (e) { showMsg(msgEl, e.message, 'error'); btn && (btn.disabled = false); }
+    } catch (e) {
+      showMsg(msgEl, humanError(e), 'error');
+    }
   }
 
-  async function unlinkSteam(msgEl, btn) {
-    btn && (btn.disabled = true);
-    const { error } = await sb.functions.invoke('unlink-steam', { method: 'POST' });
-    if (error) { btn && (btn.disabled = false); return showMsg(msgEl, 'No se pudo desvincular Steam.', 'error'); }
-    await loadMe();
-    flags.set('vant_flash', JSON.stringify({ text: 'Steam desvinculado.', kind: 'info' }));
-    if (typeof router === 'function') router();
+  async function loginWithEmail(email, password, msgEl) {
+    try {
+      await A0.client.loginWithCredentials({ username: email, password });
+      return true;
+    } catch (e) {
+      showMsg(msgEl, humanError(e), 'error');
+      return false;
+    }
   }
 
+  async function signUpWithEmail(email, password, username, msgEl) {
+    try {
+      const res = await fetch('https://vants.eu.auth0.com/dbconnections/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: 'oaOmNizh7HrASWfmfM29bN284IMJvqPG',
+          email, password,
+          connection: 'Username-Password-Authentication',
+          user_metadata: { username },
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.description || err.message || 'Error al registrar');
+      }
+      return await loginWithEmail(email, password, msgEl);
+    } catch (e) {
+      showMsg(msgEl, humanError(e), 'error');
+      return false;
+    }
+  }
+
+  async function resetPassword(email, msgEl) {
+    try {
+      const res = await fetch('https://vants.eu.auth0.com/dbconnections/change_password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: 'oaOmNizh7HrASWfmfM29bN284IMJvqPG',
+          email,
+          connection: 'Username-Password-Authentication',
+        }),
+      });
+      if (!res.ok) throw new Error('Error al enviar el correo');
+      showMsg(msgEl, 'Si existe una cuenta con ese correo, recibirás un enlace para restablecer la contraseña.', 'success');
+    } catch (e) {
+      showMsg(msgEl, humanError(e), 'error');
+    }
+  }
+
+  // ---------- handlers de formularios ----------
   const HANDLERS = {
     async login(form, msg) {
       const email = form.email.value.trim(), password = form.password.value;
       if (!email || !password) return showMsg(msg, 'Introduce tu correo y tu contraseña.', 'error');
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) return showMsg(msg, humanError(error), 'error');
-      showMsg(msg, 'Sesión iniciada.', 'success');
-      const next = flags.get('vant_next'); flags.del('vant_next');
-      go(next || 'cuenta');
+      const ok = await loginWithEmail(email, password, msg);
+      if (ok) {
+        showMsg(msg, 'Sesión iniciada.', 'success');
+        const next = flags.get('vant_next'); flags.del('vant_next');
+        go(next || 'cuenta');
+      }
     },
     async registro(form, msg) {
       const username = form.username.value.trim(), email = form.email.value.trim();
@@ -393,33 +238,18 @@ ${METHOD_BUTTONS('Registrarse')}
       const pp = passwordProblem(password); if (pp) return showMsg(msg, pp, 'error');
       if (password !== password2) return showMsg(msg, 'Las contraseñas no coinciden.', 'error');
       if (!form.age.checked) return showMsg(msg, 'Debes confirmar la edad mínima y aceptar los términos.', 'error');
-      const { data: taken } = await sb.from('players').select('id').eq('username', username.toLowerCase()).maybeSingle();
+      const { data: taken } = await DB.from('players').select('id').eq('username', username.toLowerCase()).maybeSingle();
       if (taken) return showMsg(msg, 'Ese nickname ya está en uso.', 'error');
-      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { username }, emailRedirectTo: baseUrl() + '?next=cuenta' } });
-      if (error) return showMsg(msg, humanError(error), 'error');
-      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        return showMsg(msg, 'Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.', 'error');
+      const ok = await signUpWithEmail(email, password, username, msg);
+      if (ok) {
+        showMsg(msg, 'Cuenta creada.', 'success');
+        go('cuenta');
       }
-      form.reset();
-      if (data.session) { showMsg(msg, 'Cuenta creada.', 'success'); return go('cuenta'); }
-      showMsg(msg, 'Cuenta creada. Te hemos enviado un correo a ' + email + ' para confirmarla.', 'success');
     },
     async recuperar(form, msg) {
       const email = form.email.value.trim();
       if (!email) return showMsg(msg, 'Introduce tu correo.', 'error');
-      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: baseUrl() + '?next=nueva-contrasena' });
-      if (error) return showMsg(msg, humanError(error), 'error');
-      showMsg(msg, 'Si existe una cuenta con ese correo, recibirás un enlace para restablecer la contraseña.', 'success');
-    },
-    async 'nueva-contrasena'(form, msg) {
-      if (!session) return showMsg(msg, 'El enlace ha caducado o se abrió en otro navegador. Solicita uno nuevo.', 'error');
-      const password = form.password.value, password2 = form.password2.value;
-      const pp = passwordProblem(password); if (pp) return showMsg(msg, pp, 'error');
-      if (password !== password2) return showMsg(msg, 'Las contraseñas no coinciden.', 'error');
-      const { error } = await sb.auth.updateUser({ password });
-      if (error) return showMsg(msg, humanError(error), 'error');
-      form.reset();
-      showMsg(msg, 'Contraseña actualizada.', 'success');
+      await resetPassword(email, msg);
     },
     async perfil(form, msg) {
       if (!me || !me.player) return showMsg(msg, 'Tu perfil de jugador aún no está creado.', 'error');
@@ -429,13 +259,13 @@ ${METHOD_BUTTONS('Registrarse')}
         main_game: form.main_game.value || null,
         country: form.country.value.trim().slice(0, 56) || null,
       };
-      const { error } = await sb.from('players').update(upd).eq('id', me.player.id);
+      const { error } = await DB.from('players').update(upd).eq('id', me.player.id);
       if (error) return showMsg(msg, humanError(error), 'error');
       const bio = form.bio.value.trim().slice(0, 280);
       const vis = form.visibility.value;
-      const { error: e2 } = await sb.from('profiles').update({ bio, visibility: vis }).eq('player_id', me.player.id);
+      const { error: e2 } = await DB.from('profiles').update({ bio, visibility: vis }).eq('player_id', me.player.id);
       if (e2) return showMsg(msg, humanError(e2), 'error');
-      window.VantDB.invalidate('p:'); window.VantDB.invalidate('players');
+      DB.invalidate('p:'); DB.invalidate('players');
       await loadMe(); updateHeader();
       showMsg(msg, 'Perfil actualizado.', 'success');
     },
@@ -443,22 +273,22 @@ ${METHOD_BUTTONS('Registrarse')}
       if (!me || !me.player) return showMsg(msg, 'Tu perfil de jugador aún no está creado.', 'error');
       const subject = form.subject.value.trim(), description = form.description.value.trim();
       if (subject.length < 4 || description.length < 10) return showMsg(msg, 'Añade un asunto y una descripción más detallada.', 'error');
-      const { error } = await sb.from('support_tickets').insert({
+      const { error } = await DB.from('support_tickets').insert({
         player_id: me.player.id, discord_id: me.discord ? me.discord.discord_id : null,
         subject: subject.slice(0, 120), description: description.slice(0, 2000), category: form.category.value, priority: 'normal', status: 'open',
       });
       if (error) return showMsg(msg, humanError(error), 'error');
-      logEvent('ticket_soporte', { asunto: subject.slice(0, 120) });
+      DB.rpc('log_web_event', { event_type: 'ticket_soporte', data: { asunto: subject.slice(0, 120) } });
       form.reset();
       showMsg(msg, 'Ticket enviado. El equipo te responderá por correo o Discord.', 'success');
       loadAccountLists(document.querySelector('[data-account]'));
     },
   };
 
+  // ---------- checkout Stripe ----------
   async function startCheckout(key, msgEl, btn) {
     const plan = PLANS[key];
     if (!plan) return;
-    if (!sb) return showMsg(msgEl, 'No se pudo cargar el sistema de pagos. Recarga la página.', 'error');
     if (!session) {
       flags.set('vant_next', 'checkout/' + key);
       showMsg(msgEl, 'Inicia sesión para que el plan quede asociado a tu cuenta. Redirigiendo…', 'info');
@@ -468,20 +298,19 @@ ${METHOD_BUTTONS('Registrarse')}
     const current = (me && me.plan) || 'free';
     if (PLAN_RANK[current] >= PLAN_RANK[key]) return showMsg(msgEl, 'Ya tienes el plan ' + current.toUpperCase() + ', que incluye este.', 'info');
     btn.disabled = true; btn.textContent = 'Abriendo Stripe…';
-    await logEvent('checkout_iniciado', { plan: key.toUpperCase(), precio: '€' + plan.price });
+    DB.rpc('log_web_event', { event_type: 'checkout_iniciado', data: { plan: key.toUpperCase(), precio: '€' + plan.price } });
     const url = new URL(plan.link);
-    url.searchParams.set('client_reference_id', session.user.id);
+    url.searchParams.set('client_reference_id', session.userId);
     if (session.user.email) url.searchParams.set('prefilled_email', session.user.email);
     url.searchParams.set('locale', 'es');
     try { window.top.location.href = url.toString(); } catch (_) { window.location.href = url.toString(); }
   }
 
-  // ---------- inscripción a torneos / RSVP ----------
+  // ---------- torneos / RSVP ----------
   async function requirePlayer(msgEl) {
     if (!session) { flags.set('vant_next', window.location.hash.replace('#/', '')); showMsg(msgEl, 'Inicia sesión para continuar. Redirigiendo…', 'info'); setTimeout(() => go('login'), 900); return null; }
     if (!me) await loadMe();
     if (!me || !me.player) { showMsg(msgEl, 'Tu perfil de jugador aún no está listo. Recarga la página en unos segundos.', 'warning'); return null; }
-    if (!session.user.email_confirmed_at && (session.user.app_metadata || {}).provider === 'email') { showMsg(msgEl, 'Confirma tu correo antes de inscribirte.', 'warning'); return null; }
     return me.player;
   }
 
@@ -496,19 +325,19 @@ ${METHOD_BUTTONS('Registrarse')}
       const p = await requirePlayer(msg); if (!p) return;
       if (t.max_participants && t.entries.length >= t.max_participants) return showMsg(msg, 'El torneo está completo.', 'warning');
       reg.disabled = true;
-      const { error } = await sb.from('tournament_entries').insert({ tournament_id: t.id, player_id: p.id, status: 'registered' });
+      const { error } = await DB.from('tournament_entries').insert({ tournament_id: t.id, player_id: p.id, status: 'registered' });
       reg.disabled = false;
       if (error) return showMsg(msg, /duplicate|unique/i.test(error.message) ? 'Ya estás inscrito en este torneo.' : humanError(error), 'error');
-      logEvent('inscripcion_torneo', { torneo: t.name });
-      window.VantDB.invalidate('t:'); window.VantDB.invalidate('tournaments');
+      DB.rpc('log_web_event', { event_type: 'inscripcion_torneo', data: { torneo: t.name } });
+      DB.invalidate('t:'); DB.invalidate('tournaments');
       showMsg(msg, 'Inscripción confirmada.', 'success');
       setTimeout(() => router(), 700);
     });
     unreg.addEventListener('click', async () => {
       const p = await requirePlayer(msg); if (!p) return;
-      const { error } = await sb.from('tournament_entries').delete().eq('tournament_id', t.id).eq('player_id', p.id);
+      const { error } = await DB.from('tournament_entries').delete().eq('tournament_id', t.id).eq('player_id', p.id);
       if (error) return showMsg(msg, humanError(error), 'error');
-      window.VantDB.invalidate('t:'); window.VantDB.invalidate('tournaments');
+      DB.invalidate('t:'); DB.invalidate('tournaments');
       showMsg(msg, 'Inscripción cancelada.', 'info');
       setTimeout(() => router(), 700);
     });
@@ -517,10 +346,10 @@ ${METHOD_BUTTONS('Registrarse')}
   async function rsvp(eventId, btn, msgEl) {
     const p = await requirePlayer(msgEl); if (!p) return;
     btn.disabled = true;
-    const { error } = await sb.from('event_rsvps').insert({ event_id: eventId, player_id: p.id, status: 'going' });
+    const { error } = await DB.from('event_rsvps').insert({ event_id: eventId, player_id: p.id, status: 'going' });
     btn.disabled = false;
     if (error && !/duplicate|unique/i.test(error.message)) return showMsg(msgEl, humanError(error), 'error');
-    logEvent('rsvp_evento', { evento: eventId });
+    DB.rpc('log_web_event', { event_type: 'rsvp_evento', data: { evento: eventId } });
     btn.textContent = 'Confirmado'; btn.disabled = true;
     showMsg(msgEl, 'Asistencia confirmada.', 'success');
   }
@@ -533,57 +362,49 @@ ${METHOD_BUTTONS('Registrarse')}
     }
     const u = session.user;
     const p = me && me.player;
-    const identities = (u.identities || []).map((i) => i.provider).filter((i) => !(i === 'email' && isPlaceholderEmail(u.email)));
-    const steamAcc = me && me.steam;
-    const hasGoogle = identities.includes('google');
-    const hasGithub = identities.includes('github');
-    const hasTwitch = identities.includes('twitch');
-    const hasSpotify = identities.includes('spotify') || (u.app_metadata || {}).provider === 'spotify' || ((u.app_metadata || {}).providers || []).includes('spotify');
-    if (steamAcc || (u.app_metadata || {}).steam_id) identities.push('steam');
-    const hasDiscord = identities.includes('discord') || (me && me.discord);
     const plan = (me && me.plan) || 'free';
     const opt = (v, cur, label) => `<option value="${v}"${v === (cur || '') ? ' selected' : ''}>${label}</option>`;
+    const steamAcc = me && me.steam;
+    const hasGoogle = (u.identities || []).some(i => (i.provider || i.connection || '').includes('google'));
+    const hasGithub = (u.identities || []).some(i => (i.provider || i.connection || '').includes('github'));
+    const hasDiscord = (me && me.discord) || (u.identities || []).some(i => (i.provider || i.connection || '').includes('discord'));
+    const hasKick = (u.identities || []).some(i => (i.provider || i.connection || '').includes('kick'));
+
+    // Cargar módulo streamer si está disponible
+    const streamerHtml = window.VantStreamer && p ? window.VantStreamer.renderStreamerCard(p) : '';
+    const avatarHtml = window.VantStreamer && p ? window.VantStreamer.renderAvatarEditor(p) : '';
+    const friendsHtml = window.VantStreamer && p ? window.VantStreamer.renderFriendSection([], [], p.id) : '';
+
     root.innerHTML = `
       <div class="account-head">
         <div class="player-avatar player-avatar-lg">${p && p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="">` : esc((displayName() || '?').slice(0, 2).toUpperCase())}</div>
-        <div><h1>${esc(displayName())}</h1><div class="player-sub">${p ? '@' + esc(p.username) : ''}${!isPlaceholderEmail(u.email) && u.email ? (p ? ' · ' : '') + esc(u.email) : ''}</div>
+        <div><h1>${esc(displayName())}</h1><div class="player-sub">${p ? '@' + esc(p.username) : ''}${u.email ? (p ? ' · ' : '') + esc(u.email) : ''}</div>
         ${p ? `<a class="link-inline" href="#/jugador/${encodeURIComponent(p.username)}">Ver perfil público</a>` : ''}
         <div class="account-quick"><a class="btn btn-sm ${plan !== 'free' ? 'btn-gold' : 'btn-secondary'}" href="#/zona">${plan !== 'free' ? 'Entrar a mi zona ' + esc(plan.toUpperCase()) : 'Desbloquear zona exclusiva'}</a>${me && me.adminRole ? '<a class="btn btn-sm btn-primary" href="#/admin">Panel admin</a>' : ''}</div></div>
       </div>
       <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
       ${!p ? '<div class="auth-msg auth-msg-warning">Estamos creando tu perfil de jugador. Si no aparece en unos segundos, recarga la página.</div>' : ''}
+
+      ${streamerHtml ? `<h2 class="account-h2">Streamer</h2>${streamerHtml}` : ''}
+
       <div class="account-grid">
         <div class="account-item"><span>Plan</span><strong class="account-plan account-plan-${esc(plan)}">${esc(plan.toUpperCase())}</strong></div>
-        <div class="account-item"><span>Correo</span><strong>${isPlaceholderEmail(u.email) ? 'Sin correo (cuenta Steam)' : u.email_confirmed_at ? 'Verificado' : 'Pendiente de verificar'}</strong></div>
+        <div class="account-item"><span>Correo</span><strong>${u.email ? (u.email_verified ? 'Verificado' : 'Pendiente de verificar') : 'Sin correo'}</strong></div>
         <div class="account-item"><span>Discord</span><strong>${hasDiscord ? esc((me && me.discord && me.discord.discord_username) || 'Vinculado') : 'No vinculado'}</strong>
           ${hasDiscord ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-discord>Vincular Discord</button>`}</div>
         <div class="account-item"><span>Google</span><strong>${hasGoogle ? 'Vinculado' : 'No vinculado'}</strong>
           ${hasGoogle ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-google>Vincular Google</button>`}</div>
         <div class="account-item"><span>GitHub</span><strong>${hasGithub ? 'Vinculado' : 'No vinculado'}</strong>
           ${hasGithub ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-github>Vincular GitHub</button>`}</div>
-        <div class="account-item"><span>Twitch</span><strong>${hasTwitch ? 'Vinculado' : 'No vinculado'}</strong>
-          ${hasTwitch ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-twitch>Vincular Twitch</button>`}</div>
-        <div class="account-item"><span>Spotify</span><strong>${hasSpotify ? 'Vinculado' : 'No vinculado'}</strong>
-          ${hasSpotify ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-spotify>Vincular Spotify</button>`}</div>
+        <div class="account-item"><span>Kick</span><strong>${hasKick ? 'Vinculado' : 'No vinculado'}</strong>
+          ${hasKick ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-kick>Vincular Kick</button>`}</div>
         <div class="account-item account-item-steam"><span>Steam</span>
-          ${steamAcc ? `<strong class="steam-acc">${steamAcc.avatar_url ? `<img src="${esc(steamAcc.avatar_url)}" alt="" width="22" height="22">` : ''}${steamAcc.profile_url ? `<a href="${esc(steamAcc.profile_url)}" target="_blank" rel="noopener noreferrer">${esc(steamAcc.display_name || steamAcc.handle)}</a>` : esc(steamAcc.display_name || steamAcc.handle)}</strong>
-            ${isPlaceholderEmail(u.email) ? '' : '<button type="button" class="btn btn-secondary btn-sm" data-unlink-steam>Desvincular</button>'}`
-          : `<strong>No vinculado</strong><button type="button" class="btn btn-secondary btn-sm" data-link-steam>Vincular Steam</button>`}</div>
-        <div class="account-item"><span>Métodos de acceso</span><strong>${[...new Set(identities)].map((i) => PROVIDER_NAME[i] || i).join(' + ') || 'Correo'}</strong></div>
+          ${steamAcc ? `<strong class="steam-acc">${steamAcc.avatar_url ? `<img src="${esc(steamAcc.avatar_url)}" alt="" width="22" height="22">` : ''}${steamAcc.profile_url ? `<a href="${esc(steamAcc.profile_url)}" target="_blank" rel="noopener noreferrer">${esc(steamAcc.display_name || steamAcc.handle)}</a>` : esc(steamAcc.display_name || steamAcc.handle)}</strong>`
+          : `<strong>No vinculado</strong><span class="login-note">Steam se vinculará desde la app de escritorio.</span>`}</div>
       </div>
-      ${hasSpotify ? `
-      <section class="spotify-player-card" data-spotify-player aria-labelledby="spotify-title">
-        <div class="spotify-player-heading"><div><p class="spotify-kicker">VANTCALL SOUNDTRACK</p><h2 id="spotify-title">Spotify</h2></div><span class="spotify-badge">SPOTIFY</span></div>
-        ${session.provider_token ? `
-        <p class="spotify-description">Conecta tu reproductor y escucha música mientras compites. Se requiere Spotify Premium.</p>
-        <form class="spotify-controls" data-spotify-form>
-          <label for="spotify-uri">Enlace o URI de una canción o playlist</label>
-          <input id="spotify-uri" name="spotify-uri" type="text" placeholder="https://open.spotify.com/track/… o spotify:track:…" autocomplete="off" required>
-          <div class="spotify-actions"><button class="btn btn-primary" type="submit" data-spotify-play disabled>Conectando…</button><button class="btn btn-secondary" type="button" data-spotify-toggle disabled>Pausar / reanudar</button></div>
-        </form>
-        <p class="spotify-status" data-spotify-status role="status" aria-live="polite">Conectando con Spotify…</p>` : `
-        <p class="spotify-description">Spotify está vinculado, pero esta sesión no tiene un token de reproducción. Cierra sesión y vuelve a entrar con Spotify para renovar el acceso.</p>`}
-      </section>` : ''}
+
+      ${avatarHtml ? `<h2 class="account-h2">Foto de perfil</h2>${avatarHtml}` : ''}
+
       ${plan !== 'free' && me && me.perks && me.perks.length ? `
       <h2 class="account-h2">Tus ventajas ${esc(plan.toUpperCase())}</h2>
       <div class="perk-grid">${me.perks.map((k) => `<div class="perk-card perk-${esc(k.tier)}"><span class="perk-tier">${esc(String(k.tier).toUpperCase())}</span><h3>${esc(k.title)}</h3><p>${esc(k.body || '')}</p>${k.cta_url && k.cta_label ? `<a class="link-inline" href="${esc(k.cta_url)}"${/^https?:/.test(k.cta_url) ? ' target="_blank" rel="noopener noreferrer"' : ''}>${esc(k.cta_label)}</a>` : ''}</div>`).join('')}</div>` : ''}
@@ -603,6 +424,8 @@ ${METHOD_BUTTONS('Registrarse')}
         <div class="login-form-group"><label class="login-form-label" for="pf-vis">Visibilidad del perfil</label><select id="pf-vis" name="visibility" class="login-form-input">${opt('public', me.profile && me.profile.visibility, 'Público')}${opt('friends', me.profile && me.profile.visibility, 'Solo amigos')}${opt('private', me.profile && me.profile.visibility, 'Privado')}</select></div>
         <button type="submit" class="btn btn-secondary login-submit">Guardar perfil</button>
       </form>` : ''}
+
+      ${friendsHtml ? `<h2 class="account-h2">Amigos</h2>${friendsHtml}` : ''}
 
       <h2 class="account-h2">Mis torneos</h2>
       <div data-list="entries"><p class="login-note">Cargando…</p></div>
@@ -636,10 +459,10 @@ ${METHOD_BUTTONS('Registrarse')}
     const pid = me.player.id;
     const set = (k, h) => { const el = root.querySelector(`[data-list="${k}"]`); if (el) el.innerHTML = h; };
     const [en, pu, tk, su] = await Promise.all([
-      sb.from('tournament_entries').select('status, registered_at, tournament:tournaments(name, slug, starts_at)').eq('player_id', pid),
-      sb.from('purchases').select('tier, amount_cents, currency, payment_status, paid_at, created_at').eq('player_id', pid).order('created_at', { ascending: false }),
-      sb.from('tickets').select('tier, status, amount_cents, currency, purchased_at').eq('player_id', pid),
-      sb.from('support_tickets').select('subject, status, category, created_at').eq('player_id', pid).order('created_at', { ascending: false }),
+      DB.from('tournament_entries').select('status, registered_at, tournament:tournaments(name, slug, starts_at)').eq('player_id', pid),
+      DB.from('purchases').select('tier, amount_cents, currency, payment_status, paid_at, created_at').eq('player_id', pid).order('created_at', { ascending: false }),
+      DB.from('tickets').select('tier, status, amount_cents, currency, purchased_at').eq('player_id', pid),
+      DB.from('support_tickets').select('subject, status, category, created_at').eq('player_id', pid).order('created_at', { ascending: false }),
     ]);
     set('entries', (en.data || []).length ? `<ul class="account-purchases">${en.data.map((e) => e.tournament ? `<li><a href="#/torneo/${encodeURIComponent(e.tournament.slug)}">${esc(e.tournament.name)}</a><span>${esc(e.status)}</span><span>${e.tournament.starts_at ? new Date(e.tournament.starts_at).toLocaleDateString('es-ES') : '—'}</span><span></span></li>` : '').join('')}</ul>` : '<p class="login-note">No estás inscrito en ningún torneo. <a href="#/torneos">Ver torneos</a></p>');
     const buys = [...(pu.data || []).map((x) => ({ t: x.tier, a: x.amount_cents, c: x.currency, s: x.payment_status, d: x.paid_at || x.created_at })), ...(tk.data || []).map((x) => ({ t: x.tier, a: x.amount_cents, c: x.currency, s: x.status, d: x.purchased_at }))];
@@ -661,69 +484,10 @@ ${METHOD_BUTTONS('Registrarse')}
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const h = HANDLERS[form.dataset.form];
-      if (!h || !sb) return;
+      if (!h) return;
       showMsg(msg, '', 'info');
       setBusy(form, true);
       try { await h(form, msg); } catch (err) { showMsg(msg, humanError(err), 'error'); } finally { setBusy(form, false); }
-    });
-  }
-
-  function bindSpotifyPlayer(root) {
-    if (spotifyPlayer) {
-      spotifyPlayer.disconnect();
-      spotifyPlayer = null;
-    }
-    const form = root && root.querySelector('[data-spotify-form]');
-    if (!form) return;
-    const status = root.querySelector('[data-spotify-status]');
-    const playButton = root.querySelector('[data-spotify-play]');
-    const toggleButton = root.querySelector('[data-spotify-toggle]');
-    spotifyPlayer = new window.VantSpotifyPlayer({
-      accessToken: session.provider_token,
-      onReady() {
-        status.textContent = 'Spotify conectado. Pega el enlace o URI de una canción o playlist.';
-        playButton.disabled = false;
-        playButton.textContent = 'Reproducir';
-        toggleButton.disabled = false;
-      },
-      onState(state) {
-        if (state) status.textContent = state.paused ? 'Reproducción pausada.' : 'Reproduciendo en Spotify.';
-      },
-      onError(error) {
-        status.textContent = error.message;
-        playButton.disabled = true;
-        playButton.textContent = 'No disponible';
-        toggleButton.disabled = true;
-      },
-    });
-    spotifyPlayer.connect().catch((error) => {
-      status.textContent = error.message;
-      playButton.disabled = true;
-      playButton.textContent = 'No disponible';
-    });
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const uri = form.elements['spotify-uri'].value.trim();
-      playButton.disabled = true;
-      status.textContent = 'Iniciando reproducción…';
-      try {
-        await spotifyPlayer.play(uri);
-        status.textContent = 'Solicitud enviada a Spotify.';
-      } catch (error) {
-        status.textContent = error.message;
-      } finally {
-        playButton.disabled = false;
-      }
-    });
-    toggleButton.addEventListener('click', async () => {
-      toggleButton.disabled = true;
-      try {
-        await spotifyPlayer.togglePlayback();
-      } catch (error) {
-        status.textContent = error.message;
-      } finally {
-        toggleButton.disabled = false;
-      }
     });
   }
 
@@ -732,7 +496,6 @@ ${METHOD_BUTTONS('Registrarse')}
     if (!main) return;
     updateHeader();
     const msg = main.querySelector('[data-auth-msg]');
-    if (!sb && main.querySelector('[data-form],[data-oauth],[data-checkout]')) showMsg(msg, 'No se pudo cargar el sistema de inicio de sesión. Recarga la página.', 'error');
     if ((pageId === 'login' || pageId === 'registro') && session) showMsg(msg, 'Ya tienes la sesión iniciada como ' + displayName() + '.', 'info');
     const flash = flags.get('vant_flash');
     if (flash && msg) { const f = JSON.parse(flash); flags.del('vant_flash'); showMsg(msg, f.text, f.kind); }
@@ -749,106 +512,89 @@ ${METHOD_BUTTONS('Registrarse')}
         const lo = root.querySelector('[data-logout]');
         if (lo) lo.addEventListener('click', () => logout());
         const ld = root.querySelector('[data-link-discord]');
-        if (ld) ld.addEventListener('click', () => linkProvider('discord', m));
+        if (ld) ld.addEventListener('click', () => oauth('discord', m));
         const lg = root.querySelector('[data-link-google]');
-        if (lg) lg.addEventListener('click', () => linkProvider('google', m));
+        if (lg) lg.addEventListener('click', () => oauth('google', m));
         const lgh = root.querySelector('[data-link-github]');
-        if (lgh) lgh.addEventListener('click', () => linkProvider('github', m));
-        const lt = root.querySelector('[data-link-twitch]');
-        if (lt) lt.addEventListener('click', () => linkProvider('twitch', m));
-        const lsp = root.querySelector('[data-link-spotify]');
-        if (lsp) lsp.addEventListener('click', () => linkProvider('spotify', m));
-        const ls = root.querySelector('[data-link-steam]');
-        if (ls) ls.addEventListener('click', () => linkSteam(m, ls));
-        const us = root.querySelector('[data-unlink-steam]');
-        if (us) us.addEventListener('click', () => unlinkSteam(m, us));
+        if (lgh) lgh.addEventListener('click', () => oauth('github', m));
+        const lk = root.querySelector('[data-link-kick]');
+        if (lk) lk.addEventListener('click', () => oauth('kick', m));
         const pf = root.querySelector('form[data-form="perfil"]'); if (pf) bindForm(pf, m);
         const st = root.querySelector('form[data-form="soporte"]'); if (st) bindForm(st, root.querySelector('[data-support-msg]'));
-        bindSpotifyPlayer(root);
+        // Bind streamer modules
+        if (window.VantStreamer && me && me.player) {
+          window.VantStreamer.bindAvatarEditor(me.player, async () => { await loadMe(); draw(); });
+          window.VantStreamer.bindFriendSection(me.player.id, async () => { await loadMe(); draw(); });
+        }
         const fl = flags.get('vant_flash'); if (fl && m) { const f = JSON.parse(fl); flags.del('vant_flash'); showMsg(m, f.text, f.kind); }
       };
       if (session && !me) loadMe().then(draw); else draw();
       if (session && me && !me.player) setTimeout(() => loadMe().then(() => { if (window.location.hash === '#/cuenta') draw(); }), 2500);
     }
 
-    if (pageId === 'precios' && session && !flags.get('vant_vp')) { flags.set('vant_vp', '1'); logEvent('visita_precios', {}); }
+    if (pageId === 'precios' && session && !flags.get('vant_vp')) { flags.set('vant_vp', '1'); DB.rpc('log_web_event', { event_type: 'visita_precios', data: {} }); }
     if (pageId === 'checkout/exito') {
       if (session) pollPlan(msg); else showMsg(msg, 'Stripe ha recibido tu pago. Inicia sesión para ver tu plan activo.', 'info');
     }
   }
 
-  // Cierre de sesión robusto: aunque falle la red, se borra la sesión local para poder
-  // volver a entrar con Discord, Google o Steam sin quedarse bloqueado.
+  // ---------- logout ----------
   async function logout() {
-    await logEvent('cierre_sesion', {});
-    try { await sb.auth.signOut({ scope: 'local' }); } catch (_) { /* se limpia igualmente */ }
-    if (spotifyPlayer) {
-      spotifyPlayer.disconnect();
-      spotifyPlayer = null;
+    DB.rpc('log_web_event', { event_type: 'cierre_sesion', data: {} }).catch(() => {});
+    if (A0.client) {
+      try {
+        await A0.client.logout({ logoutParams: { returnTo: baseUrl() + '#/inicio' } });
+      } catch (_) {}
     }
-    session = null; me = null; providers = null;
-    if (window.VantDB && window.VantDB.invalidate) window.VantDB.invalidate();
+    session = null; me = null;
+    if (DB.invalidate) DB.invalidate();
     updateHeader();
-    go('inicio');
   }
-
-  window.VantAuth = { logout, isAdmin: () => Boolean(me && me.adminRole), get adminRole() { return me && me.adminRole; }, plan: () => (me ? me.plan : 'free'), loadMe, afterRender, bindTournament, rsvp, client: sb, get session() { return session; }, get me() { return me; } };
 
   // ---------- arranque ----------
   async function boot() {
-    if (!sb) { updateHeader(); return; }
-    const params = new URLSearchParams(window.location.search);
-    // Supabase puede devolver el error en el hash (#error=...&error_description=...)
-    const rawHash = window.location.hash.replace(/^#\/?/, '');
-    if (/^(error|error_code|error_description)=/.test(rawHash)) {
-      new URLSearchParams(rawHash).forEach((v, k) => { if (!params.has(k)) params.set(k, v); });
-      if (!params.has('next')) params.set('next', 'login');
-    }
-    const next = params.get('next');
-    const authErr = params.get('error_description');
-    const steamToken = params.get('steam_token');
-    const steamErr = params.get('steam_error');
-    const steamLinked = params.get('steam_linked');
+    if (!A0.client) { updateHeader(); return; }
 
-    if (steamToken) {
-      const { error } = await sb.auth.verifyOtp({ token_hash: steamToken, type: params.get('steam_type') || 'magiclink' });
-      if (error) flags.set('vant_flash', JSON.stringify({ text: STEAM_ERRORS.login_failed, kind: 'error' }));
-      else flags.set('vant_flash', JSON.stringify({ text: 'Sesión iniciada con Steam.', kind: 'success' }));
+    const query = window.location.search;
+    if (query.includes('code=') && query.includes('state=')) {
+      try {
+        await A0.client.handleRedirectCallback();
+        window.history.replaceState(null, '', baseUrl() + '#/cuenta');
+      } catch (e) {
+        flags.set('vant_flash', JSON.stringify({ text: humanError(e), kind: 'error' }));
+        window.history.replaceState(null, '', baseUrl() + '#/login');
+      }
     }
-    if (steamErr) flags.set('vant_flash', JSON.stringify({ text: STEAM_ERRORS[steamErr] || STEAM_ERRORS.login_failed, kind: steamErr === 'cancelled' ? 'info' : 'error' }));
-    if (steamLinked) flags.set('vant_flash', JSON.stringify({ text: 'Cuenta de Steam vinculada y verificada.', kind: 'success' }));
 
-    const { data } = await sb.auth.getSession();
-    session = data.session;
+    await loadSession();
     if (session) await loadMe();
     updateHeader();
 
-    if (next || authErr || params.get('code') || steamToken || steamErr || steamLinked) {
-      if (authErr) {
-        flags.set('vant_flash', JSON.stringify({ text: /exchange external code|flow.state|state parameter/i.test(authErr) ? humanError({ message: authErr }) : /expired|invalid/i.test(authErr) ? 'El enlace ha caducado o ya se usó. Solicita uno nuevo.' : humanError({ message: authErr }), kind: 'error' }));
-      } else if (!session && params.get('code') && !steamToken) {
-        flags.set('vant_flash', JSON.stringify({ text: 'Correo confirmado. Inicia sesión con tu contraseña (el enlace se abrió en otro navegador).', kind: 'info' }));
-      }
-      const target = session ? (next || 'cuenta') : (next === 'nueva-contrasena' ? 'recuperar' : 'login');
-      window.history.replaceState(null, '', baseUrl() + '#/' + target);
-      if (typeof router === 'function') router();
-    } else if (typeof router === 'function') {
-      const cur = window.location.hash.replace('#/', '').split('?')[0];
-      if (['cuenta', 'login', 'registro', 'checkout/exito', 'nueva-contrasena', 'admin', 'zona'].includes(cur) || cur.startsWith('torneo/')) router();
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    if (next) {
+      window.history.replaceState(null, '', baseUrl() + '#/' + next);
     }
-
-    sb.auth.onAuthStateChange(async (event, s) => {
-      const prev = session;
-      session = s;
-      if (event === 'PASSWORD_RECOVERY') { go('nueva-contrasena'); return; }
-      if (event === 'SIGNED_OUT' || (s && (!prev || prev.user.id !== s.user.id))) {
-        if (s) { await loadMe(); logEvent('inicio_sesion', { proveedor: (s.user.app_metadata || {}).provider || 'email' }); } else me = null;
-        updateHeader();
-        const cur = window.location.hash.replace('#/', '');
-        if (['cuenta', 'admin', 'zona'].includes(cur) && typeof router === 'function') router();
-      }
-    });
+    if (typeof router === 'function') {
+      const cur = window.location.hash.replace('#/', '').split('?')[0];
+      if (['cuenta', 'login', 'registro', 'checkout/exito', 'admin', 'zona'].includes(cur) || cur.startsWith('torneo/')) router();
+    }
   }
 
-  document.addEventListener('DOMContentLoaded', boot);
+  // Interfaz pública (compatible con la app)
+  window.VantAuth = {
+    logout,
+    isAdmin: () => Boolean(me && me.adminRole),
+    get adminRole() { return me && me.adminRole; },
+    plan: () => (me ? me.plan : 'free'),
+    loadMe, afterRender, bindTournament, rsvp,
+    client: () => A0.client,
+    get session() { return session; },
+    get me() { return me; },
+  };
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await A0.initAuth0();
+    await boot();
+  });
 })();
