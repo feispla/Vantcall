@@ -51,7 +51,7 @@ jobs:
         run: npm install
 
       - name: Generar iconos desde la marca VANTS
-        run: npx tauri icon ../assets/brand/vants-mark-1024.png
+        run: npx tauri icon ../assets/brand/vants-mark-1024.png -o src-tauri/icons
 
       - name: Compilar instaladores
         uses: tauri-apps/tauri-action@v0
