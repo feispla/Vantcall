@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "identifier": "gg.vants.app",
   "build": {
-    "frontendDist": "https://feispla.github.io/Vantcall/",
+    "frontendDist": "../ui",
     "devUrl": "https://feispla.github.io/Vantcall/"
   },
   "app": {
@@ -16,8 +16,7 @@
         "minWidth": 960,
         "minHeight": 600,
         "resizable": true,
-        "fullscreen": false,
-        "startUrl": "https://feispla.github.io/Vantcall/"
+        "fullscreen": false
       }
     ],
     "security": {
