@@ -1,5 +1,5 @@
 // ============================================
-// VANTCALL Esports — Auth (Auth0: correo, Google, Discord, GitHub) + cuenta + zona + Stripe
+// VANTCALL Esports — Auth (Auth0: correo, Google, Discord, GitHub, Kick) + cuenta + zona + Stripe
 // Usa Auth0 SPA SDK + Neon Data API (window.VantDB de auth0-config.js)
 // ============================================
 (function () {
@@ -16,8 +16,8 @@
 
   const DB = window.VantDB;
   const A0 = window.VantAuth0;
-  let session = null; // { user, token, userId }
-  let me = null; // { player, discord, plan, profile, steam, perks, adminRole }
+  let session = null;
+  let me = null;
 
   const mem = new Map();
   const flags = { get: (k) => (mem.has(k) ? mem.get(k) : null), set: (k, v) => mem.set(k, String(v)), del: (k) => mem.delete(k) };
@@ -147,6 +147,7 @@
     github: 'github',
     twitch: 'twitch',
     spotify: 'spotify',
+    kick: 'kick', // Custom Social Connection
   };
 
   async function oauth(provider, msgEl) {
@@ -367,6 +368,12 @@
     const hasGoogle = (u.identities || []).some(i => (i.provider || i.connection || '').includes('google'));
     const hasGithub = (u.identities || []).some(i => (i.provider || i.connection || '').includes('github'));
     const hasDiscord = (me && me.discord) || (u.identities || []).some(i => (i.provider || i.connection || '').includes('discord'));
+    const hasKick = (u.identities || []).some(i => (i.provider || i.connection || '').includes('kick'));
+
+    // Cargar módulo streamer si está disponible
+    const streamerHtml = window.VantStreamer && p ? window.VantStreamer.renderStreamerCard(p) : '';
+    const avatarHtml = window.VantStreamer && p ? window.VantStreamer.renderAvatarEditor(p) : '';
+    const friendsHtml = window.VantStreamer && p ? window.VantStreamer.renderFriendSection([], [], p.id) : '';
 
     root.innerHTML = `
       <div class="account-head">
@@ -377,6 +384,9 @@
       </div>
       <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
       ${!p ? '<div class="auth-msg auth-msg-warning">Estamos creando tu perfil de jugador. Si no aparece en unos segundos, recarga la página.</div>' : ''}
+
+      ${streamerHtml ? `<h2 class="account-h2">Streamer</h2>${streamerHtml}` : ''}
+
       <div class="account-grid">
         <div class="account-item"><span>Plan</span><strong class="account-plan account-plan-${esc(plan)}">${esc(plan.toUpperCase())}</strong></div>
         <div class="account-item"><span>Correo</span><strong>${u.email ? (u.email_verified ? 'Verificado' : 'Pendiente de verificar') : 'Sin correo'}</strong></div>
@@ -386,10 +396,14 @@
           ${hasGoogle ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-google>Vincular Google</button>`}</div>
         <div class="account-item"><span>GitHub</span><strong>${hasGithub ? 'Vinculado' : 'No vinculado'}</strong>
           ${hasGithub ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-github>Vincular GitHub</button>`}</div>
+        <div class="account-item"><span>Kick</span><strong>${hasKick ? 'Vinculado' : 'No vinculado'}</strong>
+          ${hasKick ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-kick>Vincular Kick</button>`}</div>
         <div class="account-item account-item-steam"><span>Steam</span>
           ${steamAcc ? `<strong class="steam-acc">${steamAcc.avatar_url ? `<img src="${esc(steamAcc.avatar_url)}" alt="" width="22" height="22">` : ''}${steamAcc.profile_url ? `<a href="${esc(steamAcc.profile_url)}" target="_blank" rel="noopener noreferrer">${esc(steamAcc.display_name || steamAcc.handle)}</a>` : esc(steamAcc.display_name || steamAcc.handle)}</strong>`
           : `<strong>No vinculado</strong><span class="login-note">Steam se vinculará desde la app de escritorio.</span>`}</div>
       </div>
+
+      ${avatarHtml ? `<h2 class="account-h2">Foto de perfil</h2>${avatarHtml}` : ''}
 
       ${plan !== 'free' && me && me.perks && me.perks.length ? `
       <h2 class="account-h2">Tus ventajas ${esc(plan.toUpperCase())}</h2>
@@ -410,6 +424,8 @@
         <div class="login-form-group"><label class="login-form-label" for="pf-vis">Visibilidad del perfil</label><select id="pf-vis" name="visibility" class="login-form-input">${opt('public', me.profile && me.profile.visibility, 'Público')}${opt('friends', me.profile && me.profile.visibility, 'Solo amigos')}${opt('private', me.profile && me.profile.visibility, 'Privado')}</select></div>
         <button type="submit" class="btn btn-secondary login-submit">Guardar perfil</button>
       </form>` : ''}
+
+      ${friendsHtml ? `<h2 class="account-h2">Amigos</h2>${friendsHtml}` : ''}
 
       <h2 class="account-h2">Mis torneos</h2>
       <div data-list="entries"><p class="login-note">Cargando…</p></div>
@@ -501,8 +517,15 @@
         if (lg) lg.addEventListener('click', () => oauth('google', m));
         const lgh = root.querySelector('[data-link-github]');
         if (lgh) lgh.addEventListener('click', () => oauth('github', m));
+        const lk = root.querySelector('[data-link-kick]');
+        if (lk) lk.addEventListener('click', () => oauth('kick', m));
         const pf = root.querySelector('form[data-form="perfil"]'); if (pf) bindForm(pf, m);
         const st = root.querySelector('form[data-form="soporte"]'); if (st) bindForm(st, root.querySelector('[data-support-msg]'));
+        // Bind streamer modules
+        if (window.VantStreamer && me && me.player) {
+          window.VantStreamer.bindAvatarEditor(me.player, async () => { await loadMe(); draw(); });
+          window.VantStreamer.bindFriendSection(me.player.id, async () => { await loadMe(); draw(); });
+        }
         const fl = flags.get('vant_flash'); if (fl && m) { const f = JSON.parse(fl); flags.del('vant_flash'); showMsg(m, f.text, f.kind); }
       };
       if (session && !me) loadMe().then(draw); else draw();
