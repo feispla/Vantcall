@@ -609,6 +609,7 @@
         const pf = root.querySelector('form[data-form="perfil"]'); if (pf) bindForm(pf, m);
         const st = root.querySelector('form[data-form="soporte"]'); if (st) bindForm(st, root.querySelector('[data-support-msg]'));
         // Bind streamer modules
+        if (window.VantProfileExtras && window.VantProfileExtras.mountAccount) window.VantProfileExtras.mountAccount(root);
         if (window.VantStreamer && me && me.player) {
         }
         const fl = flags.get('vant_flash'); if (fl && m) { const f = JSON.parse(fl); flags.del('vant_flash'); showMsg(m, f.text, f.kind); }
