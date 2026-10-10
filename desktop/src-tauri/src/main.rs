@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 // VANTS Desktop — Tauri 2 + Auth0 (PKCE flow nativo)
 use oauth2::basic::BasicClient;
 use oauth2::{
