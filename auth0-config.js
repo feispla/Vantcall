@@ -74,6 +74,7 @@ class PostgrestQueryBuilder {
     return this;
   }
   insert(data) { this.insertData = data; this.method = 'POST'; return this; }
+  upsert(data, opts = {}) { this.insertData = data; this.method = 'POST'; this.upsertMode = true; this.onConflict = opts.onConflict || null; return this; }
   update(data) { this.updateData = data; this.method = 'PATCH'; return this; }
   delete() { this.deleteMode = true; this.method = 'DELETE'; return this; }
   eq(col, val) { this.filters.push([col, 'eq', val]); return this; }
@@ -143,6 +144,7 @@ class PostgrestQueryBuilder {
 
     const opts = { method: this.method, headers };
     if (this.insertData) opts.body = JSON.stringify(this.insertData);
+    if (this.upsertMode) { headers['Prefer'] = 'resolution=merge-duplicates'; if (this.onConflict) url.searchParams.set('on_conflict', this.onConflict); }
     if (this.updateData) opts.body = JSON.stringify(this.updateData);
 
     const res = await fetch(url.toString(), opts);
@@ -158,7 +160,9 @@ class PostgrestQueryBuilder {
 
     if (res.status === 204) return { data: null, error: null };
 
-    let data = await res.json();
+    const raw = await res.text();
+    if (!raw) return { data: null, error: null };
+    let data = JSON.parse(raw);
     if (this.maybeSingleResult && Array.isArray(data)) data = data[0] || null;
     return { data, error: null };
   }
