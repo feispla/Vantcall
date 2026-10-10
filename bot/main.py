@@ -23,7 +23,7 @@ from commands.comunidad import (
     torneo_crear_handler, recordatorio_handler,
 )
 from utils.health import start_health_server
-from utils.supabase_client import supabase
+from utils.db import execute, fetch_all, fetch_one
 
 
 def required_env(name: str) -> str:
@@ -99,15 +99,20 @@ async def setup_command(interaction: discord.Interaction) -> None:
             if canal:
                 canales[nombre] = canal
         
-        # Guardar en Supabase
-        supabase.table("guild_configs").upsert({
-            "guild_id": guild_id,
-            "guild_name": guild.name,
-            "anuncios_channel_id": canales_ids["anuncios"],
-            "tryouts_channel_id": canales_ids["tryouts"],
-            "resultados_channel_id": canales_ids["resultados"],
-            "comandos_channel_id": canales_ids["torneos"],
-        }).execute()
+        # Guardar en Neon: una fila por categoría en discord_channels.
+        # DO NOTHING para no pisar los canales ya elegidos con /vants canal.
+        categorias = {
+            "anuncios": canales_ids["anuncios"],
+            "registros": canales_ids["welcome"],
+            "ranked": canales_ids["resultados"],
+            "staff": canales_ids["sup"],
+        }
+        for categoria, channel_id in categorias.items():
+            await execute(
+                "INSERT INTO discord_channels (category, channel_id, guild_id, updated_by) "
+                "VALUES (%s, %s, %s, %s) ON CONFLICT (category) DO NOTHING",
+                (categoria, channel_id, guild_id, str(interaction.user.id)),
+            )
         
         # Mensaje de éxito
         embed = discord.Embed(
@@ -164,78 +169,47 @@ valorant_group = app_commands.Group(
 )
 
 
-def _get_valorant_ranking() -> list[dict]:
-    response = (
-        supabase.table("valorant_leaderboard_public")
-        .select("rank_position, display_name, rank, rr, wins, win_rate")
-        .order("rank_position")
-        .limit(10)
-        .execute()
-    )
-    return response.data or []
+ACTIVE_SEASON_SQL = (
+    "(SELECT id FROM seasons ORDER BY (status = 'active') DESC, season_number DESC NULLS LAST LIMIT 1)"
+)
 
 
-def _get_valorant_profile(discord_id: str) -> dict | None:
-    links = (
-        supabase.table("player_discord_accounts")
-        .select("player_id")
-        .eq("discord_id", discord_id)
-        .limit(1)
-        .execute()
-        .data
-        or []
+async def _get_valorant_ranking() -> list[dict]:
+    return await fetch_all(
+        "SELECT row_number() OVER (ORDER BY l.mmr DESC) AS rank_position, "
+        "COALESCE(l.display_name, l.username) AS display_name, l.rank, l.mmr AS rr, l.wins, "
+        "CASE WHEN l.wins + l.losses > 0 THEN round(100.0 * l.wins / (l.wins + l.losses), 1) ELSE 0 END AS win_rate "
+        f"FROM leaderboard l WHERE l.season_id = {ACTIVE_SEASON_SQL} "
+        "ORDER BY l.mmr DESC LIMIT 10"
     )
 
-    player_id = links[0]["player_id"] if links else None
 
-    if not player_id:
-        players = (
-            supabase.table("players")
-            .select("id")
-            .eq("discord_user_id", discord_id)
-            .limit(1)
-            .execute()
-            .data
-            or []
-        )
-        player_id = players[0]["id"] if players else None
-
-    if not player_id:
+async def _get_valorant_profile(discord_id: str) -> dict | None:
+    row = await fetch_one(
+        "SELECT p.id, p.username, p.display_name, p.region FROM players p "
+        "WHERE p.discord_user_id = %s "
+        "OR p.id = (SELECT player_id FROM player_discord_accounts WHERE discord_id = %s LIMIT 1) "
+        "LIMIT 1",
+        (discord_id, discord_id),
+    )
+    if not row:
         return None
 
-    players = (
-        supabase.table("players")
-        .select("id, username, display_name, region")
-        .eq("id", player_id)
-        .limit(1)
-        .execute()
-        .data
-        or []
+    stats = await fetch_one(
+        "SELECT l.rank, l.mmr AS rr, l.wins + l.losses AS games_played, l.wins, l.losses, "
+        "CASE WHEN l.wins + l.losses > 0 THEN round(100.0 * l.wins / (l.wins + l.losses), 1) ELSE 0 END AS win_rate, "
+        "l.region, "
+        "(SELECT count(*) + 1 FROM leaderboard o WHERE o.season_id = l.season_id AND o.mmr > l.mmr) AS rank_position "
+        f"FROM leaderboard l WHERE l.player_id = %s AND l.season_id = {ACTIVE_SEASON_SQL}",
+        (row["id"],),
     )
-    stats = (
-        supabase.table("valorant_stats")
-        .select("rank, rr, games_played, wins, losses, win_rate, peak_rank, act, region, last_updated")
-        .eq("player_id", player_id)
-        .limit(1)
-        .execute()
-        .data
-        or []
-    )
-
-    if not players or not stats:
+    if not stats:
         return None
-
-    rank_response = supabase.rpc(
-        "get_player_valorant_rank",
-        {"p_player_id": player_id},
-    ).execute()
-
-    rank_rows = rank_response.data or []
 
     return {
-        "player": players[0],
-        "stats": stats[0],
-        "rank_position": rank_rows[0].get("rank_position") if rank_rows else None,
+        "player": row,
+        "stats": {**stats, "peak_rank": None, "act": None},
+        "rank_position": stats.get("rank_position"),
     }
 
 
@@ -249,7 +223,7 @@ async def valorant_ranking(interaction: discord.Interaction) -> None:
     await interaction.response.defer()
 
     try:
-        rows = await asyncio.to_thread(_get_valorant_ranking)
+        rows = await _get_valorant_ranking()
     except Exception:
         await interaction.followup.send(
             "No se pudo cargar el ranking de Valorant ahora mismo.",
@@ -278,7 +252,7 @@ async def valorant_ranking(interaction: discord.Interaction) -> None:
         win_rate = float(row.get("win_rate") or 0)
         position = row.get("rank_position", "?")
         lines.append(
-            f"**{position}.** {name} — **{rank} {rr} RR** · "
+            f"**{position}.** {name} — **{rank} {rr} MMR** · "
             f"{wins} victorias · {win_rate:.1f}% WR"
         )
 
@@ -295,10 +269,7 @@ async def valorant_perfil(
     target = usuario or interaction.user
 
     try:
-        result = await asyncio.to_thread(
-            _get_valorant_profile,
-            str(target.id),
-        )
+        result = await _get_valorant_profile(str(target.id))
     except Exception:
         await interaction.response.send_message(
             "No se pudieron cargar las stats de Valorant ahora mismo.",
@@ -329,7 +300,7 @@ async def valorant_perfil(
     )
     embed.add_field(
         name="Rango actual",
-        value=f"{_safe_discord_text(stats.get('rank'), 32)} · {stats.get('rr') or 0} RR",
+        value=f"{_safe_discord_text(stats.get('rank'), 32)} · {stats.get('rr') or 0} MMR",
         inline=True,
     )
     embed.add_field(
