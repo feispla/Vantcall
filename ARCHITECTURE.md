@@ -1,225 +1,151 @@
 # VANTS — Arquitectura del repositorio
 
-> Documento pensado para lectura rápida por humanos y bots. Los diagramas son Mermaid: GitHub los renderiza como imágenes.
+> Documento para lectura rápida por humanos y bots. Los diagramas son Mermaid (GitHub los renderiza).
+> Stack actual: **Auth0** (identidad) + **Neon** (PostgreSQL, Data API y Neon Functions). Supabase ya no se usa.
 
-## 1. Vista general del sistema
+## 1. Vista general
 
 ```mermaid
 flowchart TB
-    subgraph Clients["Clientes"]
-        Browser["Navegador (SPA estática)"]
-        DiscordUsers["Usuarios de Discord"]
-        Agentvants["Agente n8n Agentvants"]
+    subgraph Clientes
+        Web["Navegador - SPA estatica"]
+        Desktop["VANTS Desktop - Tauri"]
+        Android["VANTS Android - TWA"]
+        Discord["Usuarios de Discord"]
     end
 
-    subgraph Frontend["Frontend — GitHub (este repo)"]
-        Index["index.html"]
-        App["app.js — router SPA + vistas"]
-        Auth["auth.js — login/sesión"]
-        DBjs["db.js — capa de datos Supabase"]
-        Admin["admin.js — panel staff"]
-        Zona["zona.js — zona exclusiva"]
-        Ranks["ranks.js — emblemas de rango"]
-        Premium["premium.js / premium.css"]
-        Data["data.js — fallback estático"]
-        Styles["base.css / style.css / vip.css"]
+    subgraph Hosting["Hosting estatico"]
+        Pages["GitHub Pages - feispla.github.io/Vantcall"]
+        Netlify["Netlify - mismo sitio, sin build"]
     end
 
-    subgraph Supabase["Supabase — proyecto qtetsgwwsvqzquxssudj"]
-        Postgres[("PostgreSQL + RLS")]
-        AuthSVC["Auth (Google, Discord, Steam, email)"]
-        EdgeFx["Edge Functions (Deno)"]
-        Realtime["REST / Realtime API"]
+    subgraph Identidad
+        Auth0["Auth0 - tenant vants (EU)"]
     end
 
-    subgraph Edge["Edge Functions"]
-        FxCmd["discord-commands — slash commands"]
-        FxNotify["discord-notify — webhooks a Discord"]
-        FxAdmin["discord-admin — registro de comandos"]
-        FxSteam["steam-login — OpenID de Steam"]
+    subgraph Neon["Neon (PostgreSQL)"]
+        DataAPI["Neon Data API - PostgREST, exige JWT"]
+        Funcs["Neon Functions"]
+        PG[("PostgreSQL")]
     end
 
-    subgraph BotPy["Bot Python (bot/)"]
-        MainPy["main.py — discord.py"]
-        CmdPerfil["commands/perfil.py"]
-        CmdVincular["commands/vincular.py"]
-        Health["utils/health.py"]
-    end
-
-    subgraph External["Servicios externos"]
+    subgraph Externos
+        Stripe["Stripe - pagos"]
+        Steam["Steam OpenID"]
         DiscordAPI["Discord API"]
-        RiotAPI["Riot Games API"]
-        Stripe["Stripe (pagos)"]
+        Henrik["HenrikDev API - Valorant"]
     end
 
-    Browser --> Index --> App --> DBjs
-    App --> Auth
-    App --> Zona
-    Auth --> AuthSVC
-    DBjs --> Realtime --> Postgres
-    Admin --> Postgres
-    DiscordUsers -->|interactions| FxCmd
-    FxCmd --> Postgres
-    FxNotify --> DiscordAPI
-    FxAdmin --> DiscordAPI
-    FxSteam --> AuthSVC
-    MainPy --> Postgres
-    MainPy --> DiscordAPI
-    CmdPerfil --> Postgres
-    Agentvants -->|REST service_role| Postgres
-    Agentvants -->|lee/escribe| Frontend
-    Agentvants --> RiotAPI
-    Browser --> Stripe
+    Bot["Bot de Discord - Python, Railway"]
+    N8N["n8n Cloud - automatizaciones"]
+
+    Web --> Pages
+    Desktop -->|carga la URL de la web| Pages
+    Android -->|carga la URL de la web| Pages
+    Web -->|login, JWT| Auth0
+    Web -->|lecturas con sesion| DataAPI
+    Web -->|lecturas sin sesion| Funcs
+    DataAPI --> PG
+    Funcs --> PG
+    Stripe -->|webhook| Funcs
+    Steam --> Funcs
+    Funcs --> DiscordAPI
+    Discord --> Bot
+    Bot --> DiscordAPI
+    N8N --> Henrik
+    N8N -->|GitHub API| Pages
 ```
 
-## 2. Mapa del repositorio
+## 2. Frontend (raíz del repo)
 
-```mermaid
-flowchart LR
-    subgraph Root["/ (raíz — frontend estático)"]
-        A["index.html<br/>shell + nav + SEO"]
-        B["app.js (55KB)<br/>router hash + todas las vistas"]
-        C["auth.js (51KB)<br/>OAuth, sesión, perfiles"]
-        D["db.js<br/>VantDB: cliente Supabase + caché"]
-        E["admin.js (41KB)<br/>panel de administración"]
-        F["zona.js<br/>zona exclusiva por plan"]
-        G["ranks.js<br/>emblemas SVG de los 8 rangos"]
-        H["premium.js + premium.css<br/>landing de planes"]
-        I["data.js (32KB)<br/>contenido estático / fallback"]
-        J["base.css + style.css (60KB)<br/>+ vip.css (25KB)"]
-    end
+Sitio estático **sin build ni `package.json`**: HTML + JS + CSS cargados con `<script>` en `index.html`. El control de caché se hace con `?v=N` en cada script (hay que subirlo a mano al cambiar un archivo).
 
-    subgraph Assets["assets/"]
-        K["brand/ — logos, favicons, og-image"]
-        L["ranks/ — 8 rangos en PNG + SVG"]
-        M["hero-arena.jpg, banner-setup.jpg"]
-    end
+| Archivo | Rol |
+|---|---|
+| `index.html` | Shell, navegación, SEO y carga de scripts |
+| `app.js` | Router por hash (`#/ruta`) y vistas principales |
+| `auth0-config.js` | Cliente Auth0 SPA + cliente PostgREST hacia Neon (`window.VantDB`); reemplazó al antiguo `db.js` |
+| `auth.js` | Sesión, cuenta (`renderAccount`), perfil, identidades vinculadas |
+| `auth-pages.js` | Pantallas de login y registro |
+| `profile-extras.js` | Botones y bloques extra del perfil (Agregar amigos, FACEIT, Streamer); se inyecta con `MutationObserver` y `mountAccount(root)` |
+| `socials.js`, `streamer.js`, `faceit.js`, `faceit-matches.js`, `spotify-player.js` | Integraciones de perfil |
+| `zona.js`, `premium.js`, `admin.js` | Zona exclusiva por plan, planes de pago, panel de staff |
+| `ranks.js`, `rank-calc.js` | Emblemas y cálculo de rangos |
+| `data.js` | Contenido estático / datos de respaldo |
+| `desktop-shell.js/.css` | Barra de título y menú lateral; solo se activan dentro de Tauri |
+| `sw.js`, `manifest.webmanifest`, `offline.html` | PWA: service worker, manifiesto y página sin conexión |
+| `base.css`, `style.css`, `vip.css`, `premium.css`, `bundle.css`, ... | Estilos (`bundle.css` es la concatenación servida) |
+| `*.html` sueltos | Páginas auxiliares (`inicio`, `ranked`, `torneos`, `jugadores`, `calendario`, `precios`, legales, 404) |
 
-    subgraph BotDir["bot/ — bot de Discord en Python"]
-        N["main.py — discord.py, tree de comandos"]
-        O["commands/perfil.py, vincular.py"]
-        P["register_commands.py — sync slash commands"]
-        Q["utils/ — health server + cliente Supabase"]
-    end
+Vistas de la SPA (router hash): inicio, calendario, ranked, torneos, jugadores, precios, vip, cuenta (`#/cuenta`) y perfiles públicos.
 
-    subgraph SupaDir["supabase/"]
-        R["schema.sql — tablas base"]
-        S["seed.sql — datos iniciales"]
-        T["migrations/ — 4 migraciones"]
-        U["functions/ — 4 edge functions Deno"]
-    end
+## 3. Autenticación (Auth0)
 
-    Root --- Assets
-    Root -.->|lee/escribe vía REST| SupaDir
-    BotDir -.->|service key| SupaDir
-```
-
-## 3. Flujo de datos de la SPA
+- Tenant `vants` en la región EU; el SDK `auth0-spa-js` se carga desde `index.html`.
+- Configuración en `auth0-config.js`: dominio, client id, audience `https://api.vants.app`, `useRefreshTokens` y caché en `localStorage`.
+- El token de acceso (JWT) se envía a la Neon Data API, que valida el JWT y aplica las políticas de la base.
+- El `client id` de una SPA es público por diseño; ningún secreto vive en el repo.
 
 ```mermaid
 sequenceDiagram
     participant U as Usuario
-    participant SPA as app.js (router)
-    participant DB as db.js (VantDB)
-    participant AU as auth.js
-    participant SB as Supabase
-
-    U->>SPA: #/ranked
-    SPA->>AU: ¿sesión activa?
-    AU->>SB: getSession() (PKCE)
-    SPA->>DB: leaderboard(season, 50)
-    DB->>SB: GET /rest/v1/leaderboard (vista)
-    SB-->>DB: rows (players + season_player_stats)
-    DB-->>SPA: caché 30s
-    SPA-->>U: leaderboardRows() + rankBadge()
+    participant SPA as SPA
+    participant A0 as Auth0
+    participant API as Neon Data API
+    U->>SPA: Iniciar sesion
+    SPA->>A0: redirect + PKCE
+    A0-->>SPA: codigo, luego tokens
+    SPA->>A0: getTokenSilently()
+    SPA->>API: GET /rest/v1/tabla con Bearer JWT
+    API-->>SPA: filas
 ```
 
-## 4. Base de datos (PostgreSQL + RLS)
+## 4. Datos (Neon)
 
-```mermaid
-erDiagram
-    players ||--o{ season_player_stats : "tiene stats en"
-    seasons ||--o{ season_player_stats : "agrupa"
-    players ||--o{ tournament_entries : "se inscribe"
-    tournaments ||--o{ tournament_entries : "recibe"
-    tournaments ||--o{ matches : "genera"
-    players ||--o{ matches : "juega (p1/p2)"
-    players ||--o{ ranked_matches : "juega ranked"
-    players ||--|| profiles : "bio/redes"
-    players ||--o{ player_identities : "vínculos (Discord, Riot, Steam)"
-    bot_commands }o--|| plans : "min_plan"
-    events ||--o{ event_rsvps : "asistencias"
+- **Neon Data API** (PostgREST, `.../neondb/rest/v1`): `auth0-config.js` implementa un cliente con la misma interfaz que `VantDB.client` (`from()`, `rpc()`, filtros, orden, límite). Exige siempre un JWT.
+- **Proxy público** (Neon Function `vantsdata`): sirve las lecturas sin sesión (por ejemplo ranking e inicio). Su código no está en este repo.
+- **Caché**: `VantDB` guarda consultas unos 30 s en memoria.
+- Tablas que el frontend consulta (según el código): `seasons`, `ranked_rules`, `leaderboard` (vista de solo lectura), `tournaments`, `tournament_entries`, `players`, además de perfiles e identidades vinculadas.
 
-    players {
-        uuid id PK
-        string username
-        string display_name
-        string region
-        boolean verified
-    }
-    season_player_stats {
-        uuid player_id FK
-        uuid season_id FK
-        int mmr
-        int wins
-        int losses
-        string rank
-    }
-    leaderboard_view {
-        note "VISTA: players + stats de temporada activa, ordenada por MMR. NO acepta INSERT."
-    }
-```
+## 5. Neon Functions (`neon-functions/`)
 
-**Tablas principales:** `players`, `seasons`, `season_player_stats`, `tournaments`, `tournament_entries`, `matches`, `ranked_matches`, `events`, `event_rsvps`, `profiles`, `player_identities`, `bot_commands`, `bot_admins`, `rules`.
-**Vista clave:** `leaderboard` (sólo lectura — la usan el home y la página Ranked).
-**RLS:** la clave `sb_publishable` (anon) sólo lee lo público; escrituras reales van con `service_role` (bot, edge functions, Agentvants).
+Definidas en `neon-functions/neon.ts`; usan `pg` con `DATABASE_URL`.
 
-## 5. Edge Functions (supabase/functions/, Deno)
+| Función | Qué hace |
+|---|---|
+| `steam-login` | Flujo OpenID 2.0 de Steam para vincular o iniciar sesión |
+| `stripe-webhook` | Recibe webhooks de Stripe y activa compras y planes en la base |
+| `discord-notify` | Envía embeds a Discord (registros, torneos, eventos) |
 
-| Función | Trigger | Qué hace |
-|---|---|---|
-| `discord-commands` | POST desde Discord (interactions endpoint) | Ejecuta slash commands (`/perfil`, `/ranking`, `/torneos`, `/ayuda`…) contra la DB con service_role. Catálogo en `public.bot_commands`. |
-| `discord-notify` | Webhooks de base de datos | Envía embeds a Discord: registro de usuario, torneo publicado/inscripción/resultado, evento publicado. |
-| `discord-admin` | POST con token staff | Re-registra los slash commands en Discord según `bot_commands` (sync). |
-| `steam-login` | GET/POST flujo OpenID | Login con Steam → sesión Supabase Auth. |
+Pendiente conocido: la verificación de firma de Stripe (`verifyStripeSignature`) aún no está implementada y devuelve `true`.
 
-## 6. Bot de Discord en Python (bot/)
+## 6. Apps
 
-```mermaid
-flowchart LR
-    Main["main.py<br/>discord.py + CommandTree"] --> P1["/perfil → perfil_handler"]
-    Main --> P2["/vincular riot → vincular_riot_handler"]
-    Main --> H["utils/health.py<br/>HTTP /health (Railway)"]
-    Main --> S["utils/supabase_client.py<br/>service_role"]
-    P1 --> S
-    P2 --> S
-```
+- **Desktop (Tauri)**: `desktop/`. La ventana principal carga `https://feispla.github.io/Vantcall/`, así que recibe los cambios de la web sin recompilar. Se recompila solo si cambia `desktop/**` (workflow `desktop-build.yml`).
+- **Android (TWA)**: `android/`. Trusted Web Activity que abre la URL de la web, con `UpdateGateActivity` para forzar actualizaciones. Verificación de dominio en `.well-known/assetlinks.json`. Workflow `android-build.yml`.
 
-- Desplegado fuera del repo estático (Railway, ver badge en README).
-- Variables: `DISCORD_TOKEN`, `DISCORD_GUILD_ID`, credenciales Supabase (`.env.example`).
-- `register_commands.py` sincroniza los slash commands con Discord.
+## 7. Bot de Discord (`bot/`)
 
-## 7. Integraciones externas y agentes
+Python con `discord.py`, desplegado fuera del repo estático (Railway). Comandos en `bot/commands/` (perfil, vincular, análisis, comunidad, informes, moderación).
 
-```mermaid
-flowchart TB
-    subgraph n8n["n8n Cloud (vantcall.app.n8n.cloud)"]
-        WF1["Agentvants (chat + Discord)<br/>gpt-4o-mini vía Gateway credits"]
-        WF2["Agentvants — Error Notifier<br/>→ canal Discord «𝙼oderator"]
-    end
-    WF1 -->|Supabase REST service_role| DB[("PostgreSQL")]
-    WF1 -->|GitHub API| Repo["feispla/VantsportsOficial"]
-    WF1 -->|X-Riot-Token| Riot["Riot API (Américas)<br/>account lookup · leaderboard act V"]
-    WF2 --> Discord["Discord VANTS"]
-```
+> **Deuda técnica:** el bot todavía usa el cliente de Supabase (`bot/utils/supabase_client.py`) y las variables `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`. Hay que migrarlo a Neon (conexión directa a PostgreSQL o la Data API) o desactivarlo. Hasta entonces sus comandos no funcionan con el stack actual.
 
-- **Agentvants**: administra la web — lee código del repo, consulta/escribe Supabase, consulta la API de Riot (`riot_account_lookup`, `valorant_ranked` con act_id `8102cd81-43a0-d0d7-bd59-47b8fe9bed1b` — ACT V, cambiar el 14-oct-2026).
-- **Stripe**: checkout de planes BASIC/PRO/ELITE (enlaces `#/checkout/<plan>` en `planCards()`).
+## 8. Automatizaciones (n8n)
 
-## 8. Notas operativas para bots
+- Verificación de Riot ID contra la API de HenrikDev mediante un webhook.
+- Agentes y avisos de error hacia Discord.
+- Cambios al repo por Pull Request usando la API de GitHub.
 
-1. **`leaderboard` es una vista** — nunca hacer INSERT/UPDATE; escribir en `players` + `season_player_stats` de la temporada activa (`d3ffc87e-3178-4bd2-a33d-413a88b90b7b`, "TEMPORADA 2 VANTS").
-2. **Claves**: el frontend usa la anon key (RLS protege); escrituras administrativas requieren `service_role` (nunca en el repo).
-3. **Conflictos de merge**: `app.js` quedó limpio el 05-oct-2026 (commit `0a18202c`). `index.html` aún contiene marcadores `feat/diseno-premium`/`main` en el `<head>` (pendiente de resolver).
-4. **Vistas de la SPA**: `inicio`, `calendario`, `ranked`, `torneos`, `jugadores`, `jugador/:u`, `torneo/:slug`, `precios`, `vip` (router hash en `app.js`).
-5. **Caché**: `db.js` cachea consultas 30s en memoria — datos "en vivo" pero no instantáneos.
+## 9. Despliegue
+
+1. Los cambios entran por Pull Request a `main`.
+2. GitHub Pages publica la raíz tal cual; Netlify (`netlify.toml`) también, sin paso de build.
+3. Tras un cambio de JS o CSS, sube el `?v=` en `index.html`; el service worker (`sw.js`) puede servir versión vieja hasta recargar con Ctrl+Shift+R.
+4. Desktop y Android se actualizan solos con la web; solo se recompilan si cambian sus carpetas.
+
+## 10. Notas para bots y agentes
+
+1. `leaderboard` es una vista: nunca hacer INSERT ni UPDATE sobre ella.
+2. No hay secretos en el repo. Las claves (Stripe, Discord, `DATABASE_URL`, Steam) van como variables de las Neon Functions o del hosting del bot.
+3. Cualquier página nueva debe cargarse desde `index.html` y subir su `?v=`.
+4. No reintroducir Supabase: autenticación = Auth0, datos = Neon.
