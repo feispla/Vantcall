@@ -12,6 +12,10 @@ const AUTH0_AUDIENCE = 'https://api.vants.app';
 // --- Neon Data API ---
 const NEON_DATA_API = 'https://ep-autumn-scene-b4opu2ip.apirest.c-6.us-east-2.aws.neon.tech/neondb/rest/v1';
 
+// --- Proxy público (n8n) para lecturas sin sesión ---
+// Neon Data API exige siempre un JWT; el proxy obtiene un token M2M de Auth0 en el servidor.
+const PUBLIC_PROXY = 'https://vantcall.app.n8n.cloud/webhook/vants-data';
+
 let auth0Client = null;
 let currentToken = null;
 
@@ -109,6 +113,28 @@ class PostgrestQueryBuilder {
     }
     if (this.orderCol) url.searchParams.set('order', this.orderCol + '.' + (this.orderAsc ? 'asc' : 'desc'));
     if (this.limitN) url.searchParams.set('limit', String(this.limitN));
+
+    // Sin sesión + lectura → pasar por el proxy público (sin cabeceras, evita preflight CORS)
+    if (!token && this.method === 'GET') {
+      const proxyUrl = new URL(PUBLIC_PROXY);
+      proxyUrl.searchParams.set('table', this.table);
+      url.searchParams.forEach((v, k) => proxyUrl.searchParams.set(k, v));
+      if (this.countMode) proxyUrl.searchParams.set('_count', this.countMode);
+      if (this.headOnly) proxyUrl.searchParams.set('limit', '1');
+      const pres = await fetch(proxyUrl.toString());
+      const pbody = await pres.json().catch(() => null);
+      if (!pres.ok) {
+        return { data: null, error: { message: (pbody && pbody.message) || pres.statusText, status: pres.status } };
+      }
+      if (this.headOnly) {
+        const cr = pres.headers.get('content-range');
+        return { count: cr ? parseInt(cr.split('/')[1]) || 0 : 0, error: null, data: null };
+      }
+      let pdata = pbody;
+      if ((this.singleResult || this.maybeSingleResult) && Array.isArray(pdata)) pdata = pdata[0] || null;
+      if (this.singleResult && !pdata) return { data: null, error: { message: 'No encontrado', status: 406 } };
+      return { data: pdata, error: null };
+    }
 
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = 'Bearer ' + token;
