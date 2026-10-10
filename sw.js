@@ -49,7 +49,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Solo GET de nuestro origen. APIs externas (p.ej. Supabase) van siempre a red.
+  // Solo GET de nuestro origen. APIs externas (p.ej. Neon) van siempre a red.
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
 
   // Navegación (SPA): network-first con fallback a index.html y offline.html
