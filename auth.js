@@ -377,10 +377,15 @@
     const plan = (me && me.plan) || 'free';
     const opt = (v, cur, label) => `<option value="${v}"${v === (cur || '') ? ' selected' : ''}>${label}</option>`;
     const steamAcc = me && me.steam;
-    const hasGoogle = (u.identities || []).some(i => (i.provider || i.connection || '').includes('google'));
-    const hasGithub = (u.identities || []).some(i => (i.provider || i.connection || '').includes('github'));
-    const hasDiscord = (me && me.discord) || (u.identities || []).some(i => (i.provider || i.connection || '').includes('discord'));
-    const hasKick = (u.identities || []).some(i => (i.provider || i.connection || '').includes('kick'));
+    // Proveedores vinculados: identidades de Auth0 (si la Action las añade al token),
+    // claim personalizado y la conexión con la que se ha iniciado sesión (prefijo del sub).
+    const idList = [].concat(u.identities || [], u['https://vants.app/identities'] || [], u['https://api.vants.app/identities'] || []);
+    const subProvider = String(u.sub || '').split('|')[0].toLowerCase();
+    const isLinked = (k) => subProvider.includes(k) || idList.some((i) => String((i && (i.provider || i.connection)) || i || '').toLowerCase().includes(k));
+    const hasGoogle = isLinked('google');
+    const hasGithub = isLinked('github');
+    const hasDiscord = Boolean(me && me.discord) || isLinked('discord');
+    const hasKick = isLinked('kick');
 
     // Cargar módulo streamer si está disponible
     const streamerHtml = window.VantStreamer && p ? window.VantStreamer.renderStreamerCard(p) : '';
@@ -401,7 +406,7 @@
       <div class="account-grid">
         <div class="account-item"><span>Plan</span><strong class="account-plan account-plan-${esc(plan)}">${esc(plan.toUpperCase())}</strong></div>
         <div class="account-item"><span>Correo</span><strong>${u.email ? (u.email_verified ? 'Verificado' : 'Pendiente de verificar') : 'Sin correo'}</strong></div>
-        <div class="account-item"><span>Discord</span><strong>${hasDiscord ? esc((me && me.discord && me.discord.discord_username) || 'Vinculado') : 'No vinculado'}</strong>
+        <div class="account-item"><span>Discord</span><strong>${hasDiscord ? 'Vinculado' + (me && me.discord && me.discord.discord_username ? ' · ' + esc(me.discord.discord_username) : '') : 'No vinculado'}</strong>
           ${hasDiscord ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-discord>Vincular Discord</button>`}</div>
         <div class="account-item"><span>Google</span><strong>${hasGoogle ? 'Vinculado' : 'No vinculado'}</strong>
           ${hasGoogle ? '' : `<button type="button" class="btn btn-secondary btn-sm" data-link-google>Vincular Google</button>`}</div>
