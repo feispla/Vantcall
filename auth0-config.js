@@ -87,7 +87,7 @@ class PostgrestQueryBuilder {
   is(col, val) { this.filters.push([col, 'is', val]); return this; }
   in(col, vals) { this.filters.push([col, 'in', vals]); return this; }
   not(col, op, val) { this.filters.push([col, 'not.' + op, val]); return this; }
-  or(expr) { this.filters.push(['or', null, expr]); return this; }
+  or(expr) { expr = String(expr).trim(); if (expr[0] !== '(') expr = '(' + expr + ')'; this.filters.push(['or', null, expr]); return this; }
   order(col, opts = {}) { this.orderCol = col; this.orderAsc = opts.ascending !== false; return this; }
   limit(n) { this.limitN = n; return this; }
   single() { this.singleResult = true; return this; }
