@@ -209,7 +209,7 @@
       el.querySelector('[data-f="rules"]').addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const f = formData(ev.target);
-        for (const r of rules) if (f[r.rule_key] !== undefined && f[r.rule_key] !== r.rule_value) await run(sb().from('ranked_rules').update({ rule_value: f[r.rule_key], updated_at: new Date().toISOString() }).eq('id', r.id));
+        for (const r of rules) if (f[r.rule_key] !== undefined && f[r.rule_key] !== r.rule_value) await run(sb().from('ranked_rules').update({ rule_value: f[r.rule_key], updated_at: new Date().toISOString() }).eq('rule_key', r.rule_key));
         toast('Reglas guardadas'); window.VantDB.invalidate();
       });
     },
@@ -367,7 +367,7 @@
       q('[data-f="newcmd"]').addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const d = formData(ev.target);
-        await run(sb().from('bot_commands').insert({ name: d.name.toLowerCase(), description: d.description, kind: 'custom', response_title: '/' + d.name.toLowerCase(), response_body: d.response_body || d.description }), `/${d.name} creado`);
+        await run(sb().from('bot_commands').insert({ name: d.name.toLowerCase(), description: d.description, kind: 'custom', category: 'custom', enabled: true, staff_only: false, min_plan: 'free', ephemeral: false, sort_order: (cmds.reduce((m, c) => Math.max(m, c.sort_order || 0), 0) + 10), response_title: '/' + d.name.toLowerCase(), response_body: d.response_body || d.description }), `/${d.name} creado y activado`);
         reload();
       });
       q('[data-f="channels"]').addEventListener('submit', async (ev) => {
@@ -375,7 +375,7 @@
         const d = formData(ev.target);
         for (const [k] of CATS) {
           const v = String(d[k] || '').trim();
-          if (v) await run(sb().from('discord_channels').upsert({ category: k, channel_id: v, guild_id: (st && st.guild_id) || null, updated_by: 'panel', updated_at: new Date().toISOString() }));
+          if (v) await run(sb().from('discord_channels').upsert({ category: k, channel_id: v, guild_id: (st && st.guild_id) || null, updated_by: 'panel', updated_at: new Date().toISOString() }, { onConflict: 'category' }));
           else await run(sb().from('discord_channels').delete().eq('category', k));
         }
         toast('Canales guardados');
