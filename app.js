@@ -565,7 +565,7 @@ function loadAdminScript() {
   if (!adminScriptPromise) {
     adminScriptPromise = new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = './admin.js';
+      s.src = './admin.js?v=2';
       s.onload = resolve;
       s.onerror = () => { adminScriptPromise = null; reject(new Error('No se pudo cargar admin.js')); };
       document.body.appendChild(s);
