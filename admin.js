@@ -1,6 +1,6 @@
 // ============================================
 // VANTS — Panel de administración (solo admins de public.web_admins)
-// Todo se lee y escribe en Supabase con RLS: un usuario que no sea admin
+// Todo se lee y escribe en Neon (Data API + JWT de Auth0) con RLS: un usuario que no sea admin
 // no puede ver ni modificar nada aunque abra esta ruta.
 // ============================================
 (function () {
@@ -79,7 +79,7 @@
         <div class="adm-cols">
           ${card('Registros · últimos 14 días', `<div class="adm-bars">${o.signups_14d.map((x) => `<div class="adm-bar" title="${e(x.d)}: ${x.n}"><span style="height:${Math.round((x.n / max) * 100)}%"></span><em>${new Date(x.d).getDate()}</em></div>`).join('')}</div>`)}
           ${card('Métodos de acceso', `<ul class="adm-list">${['email', 'google', 'discord', 'steam'].map((k) => `<li><span>${({ email: 'Correo', google: 'Google', discord: 'Discord', steam: 'Steam' })[k]}</span><b>${prov[k] || 0}</b></li>`).join('')}</ul>
-            ${!prov.discord ? '<p class="adm-warn">Ningún usuario ha podido entrar aún con Discord. Revisa el Client Secret de Discord en Supabase → Authentication → Providers.</p>' : ''}`)}
+            ${!prov.discord ? '<p class="adm-warn">Ningún usuario ha podido entrar aún con Discord. Revisa la conexión de Discord en Auth0 → Authentication → Social.</p>' : ''}`)}
         </div>
         ${card('Últimos eventos de la plataforma', `<table class="adm-table"><thead><tr><th>Evento</th><th>Discord</th><th>Fecha</th></tr></thead><tbody>${ev.map((x) => `<tr><td>${e(x.event_type)}</td><td><span class="adm-pill">${e(x.discord_status || 'pendiente')}</span></td><td>${dt(x.created_at)}</td></tr>`).join('')}</tbody></table>`)}`;
     },
@@ -278,11 +278,11 @@
             <div><b>${e(st.bot.username)}</b><div class="adm-sub">App ${e(st.application && st.application.id)} · Servidor ${e(st.guild_id)}</div></div></div>
           <ul class="adm-checks">
             <li class="${st.in_guild ? 'ok' : 'bad'}">${st.in_guild ? 'El bot está en el servidor VANTS' : 'El bot no está en el servidor'}${!st.in_guild && st.invite ? ` · <a href="${e(st.invite)}" target="_blank" rel="noopener noreferrer">Invitarlo</a>` : ''}</li>
-            <li class="${st.endpoint_ok ? 'ok' : 'bad'}">${st.endpoint_ok ? 'Interactions Endpoint conectado a Supabase' : 'El Interactions Endpoint no apunta a Supabase'}</li>
+            <li class="${st.endpoint_ok ? 'ok' : 'bad'}">${st.endpoint_ok ? 'Interactions Endpoint conectado' : 'El Interactions Endpoint no está conectado'}</li>
             <li class="${st.registered.length ? 'ok' : 'bad'}">${st.registered.length} comandos registrados en Discord</li>
           </ul>
           <div class="adm-actions"><button class="btn btn-primary btn-sm" data-sync>Sincronizar comandos con Discord</button><button class="btn btn-secondary btn-sm" data-reconnect>Cambiar token</button></div>`
-        : `<p>${stErr ? e(stErr) : 'El bot aún no está conectado.'} Pega el token de tu bot y VANTS hará el resto: guarda el token cifrado en Supabase Vault, conecta el Interactions Endpoint y registra todos los comandos.</p>`;
+        : `<p>${stErr ? e(stErr) : 'El bot aún no está conectado.'} Pega el token de tu bot y VANTS hará el resto: guarda el token cifrado en el servidor, conecta el Interactions Endpoint y registra todos los comandos.</p>`;
       const connectForm = `<form class="adm-form adm-form-2" data-f="connect"${connected ? ' hidden' : ''}>
           <label class="adm-span2">Token del bot (Developer Portal → Bot → Reset Token)<input class="adm-input" name="token" type="password" autocomplete="off" required placeholder="MTU1Mj..."></label>
           <label>ID del servidor<input class="adm-input" name="guild_id" value="${e((st && st.guild_id) || '1546641331927908472')}"></label>
@@ -428,7 +428,7 @@
         <aside class="adm-side">
           <div class="adm-brand"><img src="./assets/brand/vants-mark.svg" alt="" width="28" height="28"><div><b>VANTS</b><span>Panel · ${e(role)}</span></div></div>
           <nav>${TABS.map(([k, l]) => `<button type="button" class="adm-tab" data-adm-tab="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>${l}</button>`).join('')}</nav>
-          <div class="adm-side-foot"><span class="dot"></span> Supabase en vivo</div>
+          <div class="adm-side-foot"><span class="dot"></span> Neon en vivo</div>
         </aside>
         <section class="adm-main">
           <header class="adm-top"><div><div class="adm-kicker">Administración</div><h1 data-adm-title></h1></div><button type="button" class="btn btn-secondary btn-sm" data-adm-refresh>Actualizar</button></header>
