@@ -142,7 +142,8 @@
     var hash = decodeURIComponent((window.location.hash || '').replace(/^#\/?/, ''));
     var main = document.querySelector('main') || document.body;
     if (hash === 'cuenta') {
-      var root = main.querySelector('[data-account]');
+      var grid0 = main.querySelector('.account-grid');
+      var root = main.querySelector('[data-account]') || (grid0 && grid0.parentElement);
       if (root && root.querySelector('.account-grid')) mountAccount(root);
     } else if (hash.indexOf('jugador/') === 0) {
       var head = main.querySelector('.profile-head');
