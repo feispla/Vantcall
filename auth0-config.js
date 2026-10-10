@@ -12,8 +12,8 @@ const AUTH0_AUDIENCE = 'https://api.vants.app';
 // --- Neon Data API ---
 const NEON_DATA_API = 'https://ep-autumn-scene-b4opu2ip.apirest.c-6.us-east-2.aws.neon.tech/neondb/rest/v1';
 
-// --- Proxy público (n8n) para lecturas sin sesión ---
-// Neon Data API exige siempre un JWT; el proxy obtiene un token M2M de Auth0 en el servidor.
+// --- Proxy público (Neon Function "vantsdata") para lecturas sin sesión ---
+// Neon Data API exige siempre un JWT; sin sesión las lecturas pasan por esta función.
 const PUBLIC_PROXY = 'https://br-sweet-shape-b42xhogj-vantsdata.compute.c-6.us-east-2.aws.neon.tech/';
 
 let auth0Client = null;
@@ -206,7 +206,12 @@ const DB = {
   invalidate,
   getToken,
   // Compatibilidad con app.js que usa window.VantDB.client
-  client: { from, rpc },
+  client: {
+    from,
+    rpc,
+    // Las Edge Functions de Supabase ya no existen: el bot se gestionará desde Neon/n8n.
+    functions: { invoke: async () => ({ data: null, error: { message: 'Función no disponible todavía (migración desde Supabase).' } }) },
+  },
 
   stats: () => cached('stats', async () => {
     const count = async (t, f) => {
