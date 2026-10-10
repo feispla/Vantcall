@@ -240,7 +240,8 @@
     var head = root.querySelector('.account-head');
     var m = me();
     var player = m && m.player;
-    if (!head || !player || head.dataset.pfx) return;
+    if (!head || head.dataset.pfx) return;
+    if (!player) { setTimeout(scan, 1000); return; }
     head.dataset.pfx = '1';
     bindAvatar(head, player);
 
@@ -293,21 +294,60 @@
   }
 
   // ---------- Perfil público ----------
+  // Visible para todos los visitantes: Ver perfil público · Agregar amigo · FACEIT · Streamer.
   async function mountPlayer(main, username) {
     var head = main.querySelector('.profile-head');
     if (!head || head.dataset.pfxLive) return;
     head.dataset.pfxLive = '1';
-    var r = await DB().from('players').select('kick_channel,twitch_channel').eq('username', username).maybeSingle();
+    var r = await DB().from('players').select('id,username,avatar_url,kick_channel,twitch_channel').eq('username', username).maybeSingle();
     var d = (r && r.data) || {};
-    if (!d.kick_channel && !d.twitch_channel) return;
-    var info = head.children[1];
-    if (info && !head.querySelector('[data-pfx-channels]')) {
-      var links = [];
-      if (d.kick_channel) links.push('<a href="https://kick.com/' + esc(d.kick_channel) + '" target="_blank" rel="noopener noreferrer">Kick</a>');
-      if (d.twitch_channel) links.push('<a href="https://twitch.tv/' + esc(d.twitch_channel) + '" target="_blank" rel="noopener noreferrer">Twitch</a>');
-      info.insertAdjacentHTML('beforeend', '<div class="player-sub" data-pfx-channels style="margin-top:6px">Canal: ' + links.join(' · ') + '</div>');
+    var info = head.children[1] || head;
+    var m = me();
+    var mine = m && m.player;
+    var isOwner = Boolean(mine && d.id && mine.id === d.id);
+
+    // Foto: el dueño del perfil también puede cambiarla desde su perfil público
+    if (isOwner) bindAvatar(head, mine);
+
+    if (!head.querySelector('.pfx-links')) {
+      var bar = document.createElement('div');
+      bar.className = 'pfx-links';
+      bar.innerHTML =
+        '<a class="link-inline" href="#/jugador/' + encodeURIComponent(username) + '">Ver perfil público</a>' +
+        (isOwner ? '<a class="link-inline" href="#/cuenta">Editar perfil</a>' : '<button type="button" data-pfx-addfriend>Agregar amigo</button>') +
+        '<button type="button" data-pfx-goto="fm">FACEIT</button>' +
+        (d.kick_channel ? '<a class="link-inline" href="https://kick.com/' + esc(d.kick_channel) + '" target="_blank" rel="noopener noreferrer">Streamer · Kick</a>' : '') +
+        (d.twitch_channel ? '<a class="link-inline" href="https://twitch.tv/' + esc(d.twitch_channel) + '" target="_blank" rel="noopener noreferrer">Streamer · Twitch</a>' : '') +
+        (!d.kick_channel && !d.twitch_channel ? '<span class="pfx-muted">Streamer: sin canal</span>' : '') +
+        '<span class="pfx-msg" data-pfx-pubmsg></span>';
+      info.appendChild(bar);
+
+      var go = bar.querySelector('[data-pfx-goto]');
+      go.addEventListener('click', function () {
+        var t = main.querySelector('[data-fm]') || main.querySelector('[data-faceit-badge]');
+        if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        else { var mm = bar.querySelector('[data-pfx-pubmsg]'); mm.className = 'pfx-msg'; mm.textContent = 'Este jugador no tiene FACEIT vinculado.'; }
+      });
+
+      var add = bar.querySelector('[data-pfx-addfriend]');
+      if (add) add.addEventListener('click', async function () {
+        var msg = bar.querySelector('[data-pfx-pubmsg]');
+        var say = function (t, k) { msg.className = 'pfx-msg ' + (k || ''); msg.textContent = t; };
+        if (!mine) { window.location.hash = '#/login'; return; }
+        if (!d.id) return say('Jugador no encontrado.', 'err');
+        add.disabled = true;
+        var ex = await DB().from('player_friendships').select('id,status')
+          .or('(and(requester_player_id.eq.' + mine.id + ',addressee_player_id.eq.' + d.id + '),and(requester_player_id.eq.' + d.id + ',addressee_player_id.eq.' + mine.id + '))');
+        var row = ex && ex.data && ex.data[0];
+        if (row) { add.disabled = false; return say(row.status === 'accepted' ? 'Ya sois amigos.' : 'Ya hay una solicitud pendiente.', 'ok'); }
+        var ins = await DB().from('player_friendships').insert({ requester_player_id: mine.id, addressee_player_id: d.id, status: 'pending' });
+        if (ins.error) { add.disabled = false; return say('No se pudo enviar: ' + ins.error.message, 'err'); }
+        add.textContent = 'Solicitud enviada';
+        say('', '');
+      });
     }
-    showLive(head, d.kick_channel, d.twitch_channel);
+
+    if (d.kick_channel || d.twitch_channel) showLive(head, d.kick_channel, d.twitch_channel);
   }
 
   // ---------- observador ----------
