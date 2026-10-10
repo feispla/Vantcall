@@ -367,5 +367,5 @@
   new MutationObserver(function () { clearTimeout(t); t = setTimeout(scan, 150); }).observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener('hashchange', function () { setTimeout(scan, 300); });
   setTimeout(scan, 800);
-  window.VantProfileExtras = { liveStatus: liveStatus };
+  window.VantProfileExtras = { liveStatus: liveStatus, mountAccount: function (root) { try { mountAccount(root); moveFaceit(root); } catch (e) { console.error(e); } } };
 })();
