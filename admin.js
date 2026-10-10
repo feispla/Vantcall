@@ -47,12 +47,13 @@
     return data;
   }
   async function bot(action, extra = {}) {
-    const { data, error } = await sb().functions.invoke('discord-admin', { body: { action, ...extra } });
-    if (error) {
-      let msg = error.message;
-      try { const j = await error.context.json(); msg = j.error || msg; } catch (_) { /* sin cuerpo */ }
-      throw new Error(msg);
-    }
+    const token = window.VantDB && window.VantDB.getToken ? await window.VantDB.getToken() : null;
+    const res = await fetch('https://br-sweet-shape-b42xhogj-discordbot.compute.c-6.us-east-2.aws.neon.tech/admin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
     return data;
   }
   const formData = (form) => Object.fromEntries(new FormData(form).entries());
