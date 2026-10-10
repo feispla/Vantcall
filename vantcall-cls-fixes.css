@@ -256,3 +256,9 @@ html {
     font-size: clamp(4rem, 1rem + 12vw, 12rem);
   }
 }
+
+/* 9. Evitar scroll horizontal (ticker animado / elementos que desbordan) */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
