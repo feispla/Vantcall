@@ -1,0 +1,147 @@
+/* VANTS Desktop shell — estilo FACEIT. Solo aplica con html.vants-desktop */
+html.vants-desktop,
+html.vants-desktop[data-theme] {
+  --vd-bg: #0e0e10;
+  --vd-surface: #17171a;
+  --vd-surface-2: #1f1f23;
+  --vd-border: #2a2a30;
+  --vd-text: #f2f2f3;
+  --vd-muted: #9a9aa3;
+  --vd-red: #ff2d3d;
+  --vd-red-hover: #e0202f;
+  --vd-titlebar: 36px;
+  --vd-sidebar: 232px;
+  --vd-rail: 60px;
+  --color-bg: var(--vd-bg);
+  --color-surface: var(--vd-surface);
+  --color-surface-dynamic: var(--vd-surface-2);
+  --color-border: var(--vd-border);
+  --color-divider: var(--vd-border);
+  --color-primary: var(--vd-red);
+  --color-primary-hover: var(--vd-red-hover);
+  --color-primary-active: #b81521;
+  --color-accent-red: var(--vd-red);
+  --color-secondary: var(--vd-red);
+  --header-height: 0px;
+  background: var(--vd-bg);
+  overflow-x: hidden;
+}
+html.vants-desktop body { background: var(--vd-bg); overflow-x: hidden; }
+
+/* Ocultar la cabecera y el pie de la web: los reemplaza el shell */
+html.vants-desktop .header,
+html.vants-desktop .footer,
+html.vants-desktop #pwa-install-btn { display: none !important; }
+
+html.vants-desktop .layout {
+  padding-top: var(--vd-titlebar);
+  padding-left: var(--vd-sidebar);
+  padding-right: var(--vd-rail);
+  min-height: 100vh;
+}
+html.vants-desktop .main { max-width: 100%; overflow-x: hidden; }
+
+/* ---------- Barra de título ---------- */
+.vd-titlebar {
+  position: fixed; inset: 0 0 auto 0; height: var(--vd-titlebar);
+  display: flex; align-items: center; justify-content: space-between;
+  background: #0a0a0b; border-bottom: 1px solid var(--vd-border);
+  z-index: 10000; user-select: none; -webkit-user-select: none;
+}
+.vd-titlebar-brand {
+  display: flex; align-items: center; gap: 8px; padding-left: 12px;
+  font: 800 13px/1 var(--font-display, system-ui); letter-spacing: .12em; color: var(--vd-text);
+  pointer-events: none;
+}
+.vd-titlebar-brand img { width: 18px; height: 18px; }
+.vd-titlebar-drag { flex: 1; height: 100%; }
+.vd-winbtns { display: flex; height: 100%; }
+.vd-winbtn {
+  width: 46px; height: 100%; border: 0; background: transparent; color: var(--vd-muted);
+  display: grid; place-items: center; cursor: pointer;
+}
+.vd-winbtn svg { width: 12px; height: 12px; }
+.vd-winbtn:hover { background: #222227; color: var(--vd-text); }
+.vd-winbtn.vd-close:hover { background: #e81123; color: #fff; }
+
+/* ---------- Sidebar izquierda ---------- */
+.vd-sidebar {
+  position: fixed; top: var(--vd-titlebar); bottom: 0; left: 0; width: var(--vd-sidebar);
+  background: var(--vd-surface); border-right: 1px solid var(--vd-border);
+  display: flex; flex-direction: column; padding: 14px 10px; gap: 4px; z-index: 9000;
+  overflow-y: auto;
+}
+.vd-logo {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px 14px;
+  font: 900 20px/1 var(--font-display, system-ui); letter-spacing: .06em; color: var(--vd-text); text-decoration: none;
+}
+.vd-logo img { width: 28px; height: 28px; }
+.vd-play {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 0 4px 12px; height: 44px; border-radius: 6px;
+  background: var(--vd-red); color: #fff; text-decoration: none;
+  font: 800 14px/1 var(--font-display, system-ui); letter-spacing: .08em; text-transform: uppercase;
+  transition: background .15s;
+}
+.vd-play:hover { background: var(--vd-red-hover); }
+.vd-section {
+  padding: 12px 10px 6px; font: 600 11px/1 var(--font-mono, monospace);
+  letter-spacing: .14em; color: var(--vd-muted); text-transform: uppercase;
+}
+.vd-link {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  height: 40px; padding: 0 12px; border-radius: 6px;
+  color: var(--vd-muted); text-decoration: none; font: 600 14px/1 var(--font-body, system-ui);
+  transition: background .15s, color .15s;
+}
+.vd-link svg { width: 18px; height: 18px; flex: none; }
+.vd-link:hover { background: var(--vd-surface-2); color: var(--vd-text); }
+.vd-link.is-active { background: var(--vd-surface-2); color: var(--vd-text); }
+.vd-link.is-active::before {
+  content: ''; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--vd-red);
+}
+.vd-link.is-active svg { color: var(--vd-red); }
+.vd-spacer { flex: 1; }
+.vd-account {
+  display: flex; align-items: center; gap: 10px; padding: 10px; margin-top: 8px;
+  border-top: 1px solid var(--vd-border); color: var(--vd-text); text-decoration: none;
+  font: 600 14px/1.2 var(--font-body, system-ui);
+}
+.vd-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; background: var(--vd-surface-2);
+  border: 2px solid var(--vd-red); color: var(--vd-red); font-weight: 800;
+}
+.vd-account small { display: block; color: var(--vd-muted); font-weight: 500; font-size: 12px; }
+
+/* ---------- Barra derecha ---------- */
+.vd-rail {
+  position: fixed; top: var(--vd-titlebar); bottom: 0; right: 0; width: var(--vd-rail);
+  background: var(--vd-surface); border-left: 1px solid var(--vd-border);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 0; z-index: 9000;
+}
+.vd-rail a {
+  width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center;
+  color: var(--vd-muted); background: transparent; transition: background .15s, color .15s;
+}
+.vd-rail a:hover { background: var(--vd-surface-2); color: var(--vd-text); }
+.vd-rail svg { width: 20px; height: 20px; }
+.vd-rail-sep { width: 28px; height: 1px; background: var(--vd-border); margin: 4px 0; }
+
+/* ---------- Tarjetas y botones con look FACEIT ---------- */
+html.vants-desktop .card,
+html.vants-desktop [class*="-card"] {
+  background: var(--vd-surface);
+  border-color: var(--vd-border);
+  border-radius: 8px;
+}
+html.vants-desktop .btn-primary { background: var(--vd-red); border-color: var(--vd-red); }
+html.vants-desktop .btn-primary:hover { background: var(--vd-red-hover); border-color: var(--vd-red-hover); }
+
+@media (max-width: 1100px) {
+  html.vants-desktop { --vd-sidebar: 72px; }
+  .vd-link span, .vd-section, .vd-logo span, .vd-play span, .vd-account div { display: none; }
+  .vd-link { justify-content: center; padding: 0; }
+  .vd-play { margin: 0 4px 12px; }
+}
