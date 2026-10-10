@@ -179,6 +179,79 @@
     }
   }
 
+  // ---------- Vinculación real de cuentas (Auth0 account linking) ----------
+  // Requiere en Auth0: permitir a esta SPA pedir tokens de la Management API
+  // (audience https://vants.eu.auth0.com/api/v2/) con read:current_user y update:current_user_identities.
+  const MGMT_AUD = 'https://vants.eu.auth0.com/api/v2/';
+  const MGMT_SCOPE = 'openid read:current_user update:current_user_identities';
+  let linkedIds = [];
+
+  let mgmtCache = null;
+  async function mgmtToken(popup) {
+    const opts = { authorizationParams: { audience: MGMT_AUD, scope: MGMT_SCOPE } };
+    try { mgmtCache = await A0.client.getTokenSilently(opts); return mgmtCache; }
+    catch (e) {
+      if (!popup) return null;
+      mgmtCache = await A0.client.getTokenWithPopup(opts, { popup });
+      return mgmtCache;
+    }
+  }
+
+  async function loadIdentities() {
+    if (!session || !session.user) return [];
+    try {
+      const t = await mgmtToken(null);
+      if (!t) return linkedIds;
+      const r = await fetch(MGMT_AUD + 'users/' + encodeURIComponent(session.user.sub) + '?fields=identities&include_fields=true', { headers: { Authorization: 'Bearer ' + t } });
+      if (r.ok) { const j = await r.json(); linkedIds = (j && j.identities) || []; }
+    } catch (_) {}
+    return linkedIds;
+  }
+
+  async function linkAccount(provider, msgEl, redraw) {
+    const connection = PROVIDER_CONNECTION[provider];
+    if (!connection) return showMsg(msgEl, 'Proveedor no soportado.', 'error');
+    if (!session) return showMsg(msgEl, 'Inicia sesión primero.', 'error');
+    // La ventana se abre en el mismo clic para que el navegador no la bloquee
+    const popup = window.open('', 'auth0:authorize:popup', 'left=120,top=80,width=480,height=680,resizable,scrollbars=yes');
+    try {
+      // 1) Token de la Management API de la cuenta PRINCIPAL (antes de entrar con la segunda cuenta)
+      let t = mgmtCache || await mgmtToken(null);
+      if (!t) {
+        await mgmtToken(popup);
+        return showMsg(msgEl, 'Permiso concedido. Pulsa otra vez "Vincular ' + provider + '" para terminar.', 'info');
+      }
+      // 2) Iniciar sesión con la cuenta a vincular (cliente temporal, no toca tu sesión)
+      showMsg(msgEl, 'Inicia sesión en la ventana emergente para vincular ' + provider + '…', 'info');
+      const temp = new window.auth0.Auth0Client({
+        domain: 'vants.eu.auth0.com',
+        clientId: 'oaOmNizh7HrASWfmfM29bN284IMJvqPG',
+        cacheLocation: 'memory',
+        authorizationParams: { redirect_uri: baseUrl() },
+      });
+      await temp.loginWithPopup({ authorizationParams: { connection, prompt: 'login', scope: 'openid profile email' } }, { popup });
+      const claims = await temp.getIdTokenClaims();
+      if (!claims || !claims.__raw) throw new Error('No se recibió la identidad del proveedor.');
+      if (claims.sub === session.user.sub) throw new Error('Esa cuenta ya es tu cuenta principal.');
+      const r = await fetch(MGMT_AUD + 'users/' + encodeURIComponent(session.user.sub) + '/identities', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link_with: claims.__raw }),
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) throw new Error((j && (j.message || j.error)) || ('Error ' + r.status));
+      linkedIds = Array.isArray(j) ? j : linkedIds;
+      flags.set('vant_flash', JSON.stringify({ text: 'Cuenta de ' + provider + ' vinculada.', kind: 'success' }));
+      if (redraw) redraw();
+    } catch (e) {
+      try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+      const m = (e && (e.error || e.message)) || '';
+      if (/popup_closed|cancelled|window closed/i.test(m)) return showMsg(msgEl, 'Vinculación cancelada.', 'info');
+      if (/consent|login_required|access_denied|unauthorized|Forbidden|403/i.test(m)) return showMsg(msgEl, 'Auth0 no permite todavía vincular cuentas desde la web (falta activar el acceso a la Management API para esta app).', 'error');
+      showMsg(msgEl, humanError(e), 'error');
+    }
+  }
+
   async function loginWithEmail(email, password, msgEl) {
     try {
       await A0.client.loginWithCredentials({ username: email, password });
@@ -379,7 +452,7 @@
     const steamAcc = me && me.steam;
     // Proveedores vinculados: identidades de Auth0 (si la Action las añade al token),
     // claim personalizado y la conexión con la que se ha iniciado sesión (prefijo del sub).
-    const idList = [].concat(u.identities || [], u['https://vants.app/identities'] || [], u['https://api.vants.app/identities'] || []);
+    const idList = [].concat(linkedIds || [], u.identities || [], u['https://vants.app/identities'] || [], u['https://api.vants.app/identities'] || []);
     const subProvider = String(u.sub || '').split('|')[0].toLowerCase();
     const isLinked = (k) => subProvider.includes(k) || idList.some((i) => String((i && (i.provider || i.connection)) || i || '').toLowerCase().includes(k));
     const hasGoogle = isLinked('google');
@@ -526,13 +599,13 @@
         const lo = root.querySelector('[data-logout]');
         if (lo) lo.addEventListener('click', () => logout());
         const ld = root.querySelector('[data-link-discord]');
-        if (ld) ld.addEventListener('click', () => oauth('discord', m));
+        if (ld) ld.addEventListener('click', () => linkAccount('discord', m, draw));
         const lg = root.querySelector('[data-link-google]');
-        if (lg) lg.addEventListener('click', () => oauth('google', m));
+        if (lg) lg.addEventListener('click', () => linkAccount('google', m, draw));
         const lgh = root.querySelector('[data-link-github]');
-        if (lgh) lgh.addEventListener('click', () => oauth('github', m));
+        if (lgh) lgh.addEventListener('click', () => linkAccount('github', m, draw));
         const lk = root.querySelector('[data-link-kick]');
-        if (lk) lk.addEventListener('click', () => oauth('kick', m));
+        if (lk) lk.addEventListener('click', () => linkAccount('kick', m, draw));
         const pf = root.querySelector('form[data-form="perfil"]'); if (pf) bindForm(pf, m);
         const st = root.querySelector('form[data-form="soporte"]'); if (st) bindForm(st, root.querySelector('[data-support-msg]'));
         // Bind streamer modules
@@ -541,6 +614,7 @@
         const fl = flags.get('vant_flash'); if (fl && m) { const f = JSON.parse(fl); flags.del('vant_flash'); showMsg(m, f.text, f.kind); }
       };
       if (session && !me) loadMe().then(draw); else draw();
+      if (session) loadIdentities().then((ids) => { if (ids && ids.length > 1 && window.location.hash === '#/cuenta') draw(); });
       if (session && me && !me.player) setTimeout(() => loadMe().then(() => { if (window.location.hash === '#/cuenta') draw(); }), 2500);
     }
 
