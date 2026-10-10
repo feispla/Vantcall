@@ -397,7 +397,6 @@
       <div class="auth-msg" data-auth-msg role="status" aria-live="polite" hidden></div>
       ${!p ? '<div class="auth-msg auth-msg-warning">Estamos creando tu perfil de jugador. Si no aparece en unos segundos, recarga la página.</div>' : ''}
 
-      ${streamerHtml ? `<h2 class="account-h2">Streamer</h2>${streamerHtml}` : ''}
 
       <div class="account-grid">
         <div class="account-item"><span>Plan</span><strong class="account-plan account-plan-${esc(plan)}">${esc(plan.toUpperCase())}</strong></div>
@@ -415,7 +414,6 @@
           : `<strong>No vinculado</strong><span class="login-note">Steam se vinculará desde la app de escritorio.</span>`}</div>
       </div>
 
-      ${avatarHtml ? `<h2 class="account-h2">Foto de perfil</h2>${avatarHtml}` : ''}
 
       ${plan !== 'free' && me && me.perks && me.perks.length ? `
       <h2 class="account-h2">Tus ventajas ${esc(plan.toUpperCase())}</h2>
@@ -437,7 +435,6 @@
         <button type="submit" class="btn btn-secondary login-submit">Guardar perfil</button>
       </form>` : ''}
 
-      ${friendsHtml ? `<h2 class="account-h2">Amigos</h2>${friendsHtml}` : ''}
 
       <h2 class="account-h2">Mis torneos</h2>
       <div data-list="entries"><p class="login-note">Cargando…</p></div>
@@ -535,8 +532,6 @@
         const st = root.querySelector('form[data-form="soporte"]'); if (st) bindForm(st, root.querySelector('[data-support-msg]'));
         // Bind streamer modules
         if (window.VantStreamer && me && me.player) {
-          window.VantStreamer.bindAvatarEditor(me.player, async () => { await loadMe(); draw(); });
-          window.VantStreamer.bindFriendSection(me.player.id, async () => { await loadMe(); draw(); });
         }
         const fl = flags.get('vant_flash'); if (fl && m) { const f = JSON.parse(fl); flags.del('vant_flash'); showMsg(m, f.text, f.kind); }
       };
