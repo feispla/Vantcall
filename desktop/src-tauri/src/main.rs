@@ -8,7 +8,8 @@ use oauth2::{
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::webview::PageLoadEvent;
 use tauri_plugin_store::StoreExt;
 use url::Url;
 
@@ -227,8 +228,28 @@ async fn neon_query(
     res.json().await.map_err(|e| format!("JSON error: {}", e))
 }
 
+// Mantiene el titulo de la ventana como "VANTS" aunque la web cambie document.title
+const TITLE_SCRIPT: &str = "(function(){var t='VANTS';var f=function(){if(document.title!==t){document.title=t;}};f();if(!window.__vantsTitle){window.__vantsTitle=true;new MutationObserver(f).observe(document.head||document.documentElement,{childList:true,subtree:true,characterData:true});}})();";
+
 fn main() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Info)
+                .max_file_size(5_000_000)
+                .build(),
+        )
+        .on_page_load(|webview, payload| {
+            if payload.event() == PageLoadEvent::Finished {
+                log::info!("Pagina cargada: {}", payload.url());
+                let _ = webview.window().set_title("VANTS");
+                let _ = webview.eval(TITLE_SCRIPT);
+            }
+        })
+        .setup(|app| {
+            log::info!("VANTS iniciado v{}", app.package_info().version);
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_http::init())
