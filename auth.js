@@ -85,7 +85,18 @@
 
   async function loadMe() {
     if (!session) { me = null; return null; }
-    const { data: pid } = await DB.rpc('current_player_id');
+    let { data: pid } = await DB.rpc('current_player_id');
+    if (!pid) {
+      // Primer acceso con Auth0: crear jugador + perfil en Neon
+      const u = session.user || {};
+      const r = await DB.rpc('ensure_player', {
+        p_username: u.nickname || (u.email || '').split('@')[0] || u.name || null,
+        p_display_name: u.name || u.nickname || null,
+        p_avatar_url: u.picture || null,
+      });
+      pid = r && r.data ? r.data : null;
+      if (DB.invalidate) DB.invalidate('players');
+    }
     const { data: player } = pid ? await DB.from('players').select(PLAYER_COLS).eq('id', pid).maybeSingle() : { data: null };
     if (!player) {
       me = { player: null, discord: null, plan: 'free', profile: null, steam: null, perks: [], adminRole: null };
