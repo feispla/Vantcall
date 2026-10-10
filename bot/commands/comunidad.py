@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from datetime import datetime, timezone
 
-from utils.supabase_client import supabase
+from utils.db import fetch_one
 
 ANUNCIOS_CHANNEL_ID = 1553634435671396432
 STAFF_ROLE_NAMES = {"staff", "admin", "moderador", "owner"}
@@ -53,8 +53,16 @@ async def evento_crear_handler(interaction: discord.Interaction, titulo: str, ti
     }
     if descripcion:
         payload["description"] = descripcion
-    res = supabase.table("events").insert(payload).execute()
-    eid = res.data[0]["id"] if res.data else None
+    try:
+        row = await fetch_one(
+            "INSERT INTO events (title, event_type, starts_at, status, description) "
+            "VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            (payload["title"], payload["event_type"], starts, payload["status"], payload.get("description")),
+        )
+    except Exception:
+        await interaction.followup.send("❌ No se pudo crear el evento ahora. Inténtalo de nuevo más tarde.", ephemeral=True)
+        return
+    eid = row["id"] if row else None
     await interaction.followup.send(f"✅ Evento **{titulo}** creado para el {starts.strftime('%d/%m/%Y %H:%M')} UTC (id `{eid}`).", ephemeral=True)
 
 
@@ -77,8 +85,16 @@ async def torneo_crear_handler(interaction: discord.Interaction, nombre: str, fo
         "starts_at": starts.isoformat(),
         "max_participants": max_participantes,
     }
-    res = supabase.table("tournaments").insert(payload).execute()
-    tid = res.data[0]["id"] if res.data else None
+    try:
+        row = await fetch_one(
+            "INSERT INTO tournaments (name, slug, format, status, starts_at, max_participants) "
+            "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+            (payload["name"], payload["slug"], payload["format"], payload["status"], starts, payload["max_participants"]),
+        )
+    except Exception:
+        await interaction.followup.send("❌ No se pudo crear el torneo (¿ya existe uno con ese nombre?).", ephemeral=True)
+        return
+    tid = row["id"] if row else None
     await interaction.followup.send(f"✅ Torneo **{nombre}** creado (formato {formato}, inicio {starts.strftime('%d/%m/%Y')}, máx {max_participantes} jugadores, id `{tid}`).", ephemeral=True)
 
 
