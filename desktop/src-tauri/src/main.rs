@@ -231,6 +231,9 @@ async fn neon_query(
 // Mantiene el titulo de la ventana como "VANTS" aunque la web cambie document.title
 const TITLE_SCRIPT: &str = "(function(){var t='VANTS';var f=function(){if(document.title!==t){document.title=t;}};f();if(!window.__vantsTitle){window.__vantsTitle=true;new MutationObserver(f).observe(document.head||document.documentElement,{childList:true,subtree:true,characterData:true});}})();";
 
+// Avisa a la web de que corre dentro de la app de escritorio (activa el diseño estilo FACEIT)
+const DESKTOP_SCRIPT: &str = "(function(){try{localStorage.setItem('vantsDesktop','1');}catch(e){}window.dispatchEvent(new Event('vants-desktop'));})();";
+
 fn main() {
     tauri::Builder::default()
         .plugin(
@@ -244,6 +247,7 @@ fn main() {
                 log::info!("Pagina cargada: {}", payload.url());
                 let _ = webview.window().set_title("VANTS");
                 let _ = webview.eval(TITLE_SCRIPT);
+                let _ = webview.eval(DESKTOP_SCRIPT);
             }
         })
         .setup(|app| {
