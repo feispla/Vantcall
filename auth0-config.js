@@ -14,7 +14,7 @@ const NEON_DATA_API = 'https://ep-autumn-scene-b4opu2ip.apirest.c-6.us-east-2.aw
 
 // --- Proxy público (n8n) para lecturas sin sesión ---
 // Neon Data API exige siempre un JWT; el proxy obtiene un token M2M de Auth0 en el servidor.
-const PUBLIC_PROXY = 'https://vantcall.app.n8n.cloud/webhook/vants-data';
+const PUBLIC_PROXY = 'https://br-sweet-shape-b42xhogj-vantsdata.compute.c-6.us-east-2.aws.neon.tech/';
 
 let auth0Client = null;
 let currentToken = null;
