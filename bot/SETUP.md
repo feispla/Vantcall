@@ -1,64 +1,48 @@
 # Bot de Discord VANTS — configuración
 
-El bot funciona sin servidor propio: Discord envía los comandos a la Edge Function
-`discord-commands` y la base de datos publica los avisos con `discord-notify`.
+Bot en Python (`discord.py`, conexión gateway) que lee y escribe en **Neon**
+(PostgreSQL). Se despliega fuera del repo estático (Railway, Render, etc.).
 
 ## 1. Portal de desarrolladores de Discord
 
 1. Abre la aplicación del bot en https://discord.com/developers/applications
-2. **General Information → Interactions Endpoint URL**:
-   `https://qtetsgwwsvqzquxssudj.supabase.co/functions/v1/discord-commands`
-   (Discord valida la URL al guardar; requiere el secret `DISCORD_PUBLIC_KEY`).
-3. **Bot → Reset Token** si no lo tienes, e invita el bot con los permisos
-   *View Channels*, *Send Messages* y *Embed Links*.
+2. **Bot → Reset Token** si no lo tienes e invita el bot con los permisos
+   *View Channels*, *Send Messages*, *Embed Links* y los de moderación que uses.
+3. Deja vacío **Interactions Endpoint URL**: el bot recibe los comandos por gateway.
 
-## 2. Secrets en Supabase (Project Settings → Edge Functions → Secrets)
+## 2. Variables de entorno
 
-| Secret | Para qué |
+| Variable | Para qué |
 | --- | --- |
-| `DISCORD_PUBLIC_KEY` | Verificar la firma de los comandos (ya configurado) |
-| `DISCORD_BOT_TOKEN` | Publicar avisos en los canales elegidos con `/vants canal` |
-| `DISCORD_WEBHOOK_ANUNCIOS`, `_REGISTROS`, `_RANKED`, `_STAFF`, `_LOGS` | Alternativa sin token: un webhook por canal |
-| `VANTS_TZ` (opcional) | Zona horaria de las fechas de `/vants`, por defecto `Europe/Madrid` |
+| `DISCORD_TOKEN` | Token del bot |
+| `DISCORD_GUILD_ID` | Servidor donde se registran los comandos |
+| `DATABASE_URL` | Cadena de conexión de Neon (`sslmode=require`) |
+| `PORT` | Puerto del health check (por defecto 8080) |
 
-## 3. Registrar los comandos
+Nunca subas el `.env` al repo. Copia `.env.example` a `.env` en local.
+
+## 3. Arranque
 
 ```bash
-DISCORD_TOKEN=... DISCORD_APP_ID=... DISCORD_GUILD_ID=... python bot/register_commands.py
+cd bot
+pip install -r requirements.txt
+cp .env.example .env
+python main.py
 ```
 
-## 4. Elegir canales (desde Discord, como staff)
+Al arrancar, el bot sincroniza los comandos con el servidor (`tree.sync`).
 
-```
-/vants canal categoria:anuncios  canal:#anuncios
-/vants canal categoria:registros canal:#registros
-/vants canal categoria:ranked    canal:#ranked
-/vants canal categoria:staff     canal:#staff
-/vants canal categoria:logs      canal:#logs      (opcional)
-/vants estado
-```
+## Tablas de Neon que usa el bot
 
-Solo pueden usar `/vants` los usuarios en la tabla `bot_admins`.
+`players`, `leaderboard` (vista), `seasons`, `tournaments`, `tournament_entries`,
+`ranked_matches`, `events`, `user_game_accounts`, `player_discord_accounts`,
+`discord_channels`.
 
-## Qué se publica y dónde
+`/setup` solo rellena las categorías de `discord_channels` que estén vacías; no
+pisa lo configurado con `/vants canal`.
 
-| Canal | Eventos |
-| --- | --- |
-| anuncios | torneo publicado o cambia de estado, evento publicado, temporada iniciada o cerrada |
-| registros | nuevo jugador, inscripción a torneo, confirmación de asistencia a evento |
-| ranked | partida ranked finalizada, resultado de partida de torneo |
-| staff | plan activado (Stripe), ticket de soporte, postulaciones |
-| logs | inicios y cierres de sesión, checkout iniciado (solo si configuras el canal) |
+## Notas
 
-Los avisos salen de triggers en la base de datos, así que se publican igual si el
-cambio llega desde la web, desde el bot o desde el panel de Supabase. Los fallos se
-reintentan cada 5 minutos (`vants-discord-retry`, hasta 5 intentos).
-
-## Comandos
-
-`/ayuda`, `/web`, `/vincular`, `/perfil`, `/ranking`, `/torneos`, `/torneo inscribir`,
-`/eventos`, `/calendario`, `/planes` y, para staff, `/vants canal`, `/vants estado`,
-`/vants torneo-crear`, `/vants torneo-estado`, `/vants evento-crear`, `/vants temporada-iniciar`.
-
-> `bot/main.py` es el bot anterior con gateway (`/perfil`, `/vincular riot`). Si
-> usas el Interactions Endpoint, ese proceso deja de recibir comandos; puedes apagarlo.
+- `register_commands.py` registra los comandos de una función antigua de
+  Supabase que ya no existe. No lo ejecutes: reemplaza todos los comandos del
+  servidor.
