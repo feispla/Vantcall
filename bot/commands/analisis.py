@@ -3,20 +3,24 @@ from discord import app_commands
 from datetime import datetime, timezone, timedelta
 from collections import Counter
 
-from utils.supabase_client import supabase
+from utils.db import fetch_one, fetch_val
 
 
 async def stats_servidor_handler(interaction: discord.Interaction) -> None:
     await interaction.response.defer()
     guild = interaction.guild
-    players = supabase.table("players").select("id", count="exact").execute()
-    tournaments = supabase.table("tournaments").select("id", count="exact").execute()
-    matches = supabase.table("ranked_matches").select("id", count="exact").eq("status", "completed").execute()
+    try:
+        players = await fetch_val("SELECT count(*) FROM players")
+        tournaments = await fetch_val("SELECT count(*) FROM tournaments")
+        matches = await fetch_val("SELECT count(*) FROM ranked_matches WHERE status = 'completed'")
+    except Exception:
+        await interaction.followup.send("❌ No se pudo consultar la base de datos ahora.", ephemeral=True)
+        return
     embed = discord.Embed(title="📊 Stats del servidor VANTS", color=0x00B6AF, timestamp=datetime.now(timezone.utc))
     embed.add_field(name="Miembros Discord", value=str(guild.member_count), inline=True)
-    embed.add_field(name="Jugadores registrados", value=str(players.count or 0), inline=True)
-    embed.add_field(name="Torneos", value=str(tournaments.count or 0), inline=True)
-    embed.add_field(name="Partidas ranked", value=str(matches.count or 0), inline=True)
+    embed.add_field(name="Jugadores registrados", value=str(players or 0), inline=True)
+    embed.add_field(name="Torneos", value=str(tournaments or 0), inline=True)
+    embed.add_field(name="Partidas ranked", value=str(matches or 0), inline=True)
     embed.add_field(name="Canales", value=str(len(guild.channels)), inline=True)
     embed.add_field(name="Roles", value=str(len(guild.roles)), inline=True)
     await interaction.followup.send(embed=embed)
@@ -25,18 +29,27 @@ async def stats_servidor_handler(interaction: discord.Interaction) -> None:
 async def stats_jugador_handler(interaction: discord.Interaction, usuario: discord.User | None = None) -> None:
     await interaction.response.defer()
     target = usuario or interaction.user
-    res = supabase.table("players").select("*").eq("discord_user_id", str(target.id)).limit(1).execute()
-    if not res.data:
+    try:
+        p = await fetch_one("SELECT * FROM players WHERE discord_user_id = %s LIMIT 1", (str(target.id),))
+        s = None
+        if p:
+            s = await fetch_one(
+                "SELECT l.* FROM leaderboard l LEFT JOIN seasons se ON se.id = l.season_id "
+                "WHERE l.player_id = %s "
+                "ORDER BY (se.status = 'active') DESC NULLS LAST, se.season_number DESC NULLS LAST LIMIT 1",
+                (p["id"],),
+            )
+    except Exception:
+        await interaction.followup.send("❌ No se pudo consultar la base de datos ahora.", ephemeral=True)
+        return
+    if not p:
         await interaction.followup.send(f"❌ {target.mention} no tiene perfil VANTS vinculado.")
         return
-    p = res.data[0]
-    stats = supabase.table("leaderboard").select("*").eq("player_id", p["id"]).limit(1).execute()
     embed = discord.Embed(title=f"🎮 Stats de {p.get('display_name') or p['username']}", color=0xE67277)
     embed.add_field(name="Username", value=f"@{p['username']}", inline=True)
     embed.add_field(name="Juego principal", value=p.get("main_game") or "—", inline=True)
     embed.add_field(name="Región", value=p.get("region") or "—", inline=True)
-    if stats.data:
-        s = stats.data[0]
+    if s:
         embed.add_field(name="Rango", value=s.get("rank") or "Unranked", inline=True)
         embed.add_field(name="MMR", value=str(s.get("mmr") or 0), inline=True)
         embed.add_field(name="V/D", value=f"{s.get('wins') or 0} / {s.get('losses') or 0}", inline=True)

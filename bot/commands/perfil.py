@@ -3,7 +3,7 @@ from urllib.parse import quote
 
 import discord
 
-from utils.supabase_client import supabase
+from utils.db import fetch_all, fetch_one, fetch_val
 
 
 def _channel_url() -> str:
@@ -24,14 +24,10 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
     await interaction.response.defer()
 
     try:
-        player_response = (
-            supabase.table("players")
-            .select("*")
-            .eq("discord_user_id", str(target.id))
-            .limit(1)
-            .execute()
+        player = await fetch_one(
+            "SELECT * FROM players WHERE discord_user_id = %s LIMIT 1", (str(target.id),)
         )
-        if not player_response.data:
+        if not player:
             embed = discord.Embed(
                 title="❌ Usuario no encontrado",
                 description="Este usuario no tiene cuenta VANTS vinculada.",
@@ -40,35 +36,20 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
-        player = player_response.data[0]
         player_id = player["id"]
         auth_user_id = player.get("auth_user_id")
-        try:
-            try:
-                tournaments_response = (
-                    supabase.table("tournament_participants")
-                    .select("player_id", count="exact")
-                    .eq("player_id", player_id)
-                    .execute()
-                )
-            except Exception:
-                tournaments_response = (
-                    supabase.table("tournament_entries")
-                    .select("player_id", count="exact")
-                    .eq("player_id", player_id)
-                    .execute()
-                )
-            tournaments = tournaments_response.count or 0
-        except Exception:
-            tournaments = 0
-
-        accounts_response = (
-            supabase.table("user_game_accounts")
-            .select("game, handle")
-            .eq("user_id", auth_user_id)
-            .in_("game", ["riot", "steam"])
-            .limit(10)
-            .execute()
+        tournaments = await fetch_val(
+            "SELECT count(*) FROM tournament_entries WHERE player_id = %s", (player_id,)
+        ) or 0
+        accounts_rows = await fetch_all(
+            "SELECT game, handle FROM user_game_accounts WHERE user_id = %s AND game = ANY(%s) LIMIT 10",
+            (auth_user_id, ["riot", "steam"]),
+        )
+        standing = await fetch_one(
+            "SELECT l.rank, l.mmr FROM leaderboard l LEFT JOIN seasons se ON se.id = l.season_id "
+            "WHERE l.player_id = %s "
+            "ORDER BY (se.status = 'active') DESC NULLS LAST, se.season_number DESC NULLS LAST LIMIT 1",
+            (player_id,),
         )
     except Exception:
         await interaction.followup.send(
@@ -77,7 +58,7 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
         )
         return
 
-    accounts = {row["game"]: row["handle"] for row in (accounts_response.data or [])}
+    accounts = {row["game"]: row["handle"] for row in accounts_rows}
     riot_handle = accounts.get("riot")
     steam_id = accounts.get("steam")
     display_name = player.get("display_name") or target.display_name
@@ -86,8 +67,8 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
     embed.set_author(name=display_name, icon_url=player.get("avatar_url") or target.display_avatar.url)
     if player.get("avatar_url"):
         embed.set_thumbnail(url=player["avatar_url"])
-    embed.add_field(name="🏆 Rango VANTS", value=str(player.get("rank") or "Sin rango"), inline=True)
-    embed.add_field(name="⭐ Puntos", value=str(player.get("points") or 0), inline=True)
+    embed.add_field(name="🏆 Rango VANTS", value=str((standing or {}).get("rank") or "Sin rango"), inline=True)
+    embed.add_field(name="⭐ Puntos", value=str((standing or {}).get("mmr") or 0), inline=True)
     embed.add_field(name="🎮 Torneos", value=str(tournaments), inline=True)
     embed.add_field(name="🌍 País", value=player.get("country") or "No definido", inline=True)
     embed.add_field(name="🔫 Riot ID", value=riot_handle or "No vinculado", inline=True)
@@ -126,5 +107,4 @@ async def perfil_handler(interaction: discord.Interaction, usuario: discord.User
         url=_account_url(display_name),
         row=2,
     ))
-    await interaction.followup.send(embed=embed, view=view)
     await interaction.followup.send(embed=embed, view=view)
